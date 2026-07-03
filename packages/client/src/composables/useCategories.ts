@@ -18,5 +18,18 @@ export function useCategories() {
     return cat;
   }
 
-  return { categories, loadCategories, createCategory };
+  async function deleteCategory(id: string) {
+    await api.deleteCategory(id);
+    await loadCategories();
+  }
+
+  async function updateCategory(id: string, data: { name: string }) {
+    const updated = await api.updateCategory(id, data);
+    categories.value = categories.value
+      .map((c) => (c._id === id ? updated : c))
+      .sort((a, b) => a.order - b.order);
+    return updated;
+  }
+
+  return { categories, loadCategories, createCategory, updateCategory, deleteCategory };
 }

@@ -7,12 +7,12 @@ import { api, MASTERY_COLORS, MASTERY_LABELS } from '../api';
 import { useCategories } from '../composables/useCategories';
 import { useTags } from '../composables/useTags';
 import { renderMarkdown } from '../utils/markdown';
-import type { Mastery, Question } from '../types';
+import type { Mastery, Question, Tag } from '../types';
 
 const route = useRoute();
 const router = useRouter();
 const { categories, loadCategories } = useCategories();
-const { loadTags, tagOptions } = useTags();
+const { tags, loadTags, tagOptions, createTag, updateTag, deleteTag } = useTags();
 
 const loading = ref(false);
 const questions = ref<Question[]>([]);
@@ -35,6 +35,12 @@ const form = ref({ title: '', categorySlug: 'vue3', content: '', tags: [] as str
 
 const isEditing = computed(() => Boolean(editingId.value));
 const formTagOptions = computed(() => tagOptions(form.value.tags));
+
+const tagModalOpen = ref(false);
+const newTagName = ref('');
+const tagSaving = ref(false);
+const editingTagId = ref<string | null>(null);
+const editingTagName = ref('');
 
 function hasAiAnswer(record: Question) {
   return Boolean(record.aiAnswer?.trim());
@@ -155,6 +161,72 @@ async function generateAi(record: Question, event?: Event) {
 function categoryLabel(slug: string) {
   return categories.value.find((c) => c.slug === slug)?.name ?? slug;
 }
+
+async function openTagModal() {
+  await loadTags();
+  newTagName.value = '';
+  editingTagId.value = null;
+  editingTagName.value = '';
+  tagModalOpen.value = true;
+}
+
+async function submitNewTag() {
+  const name = newTagName.value.trim();
+  if (!name) {
+    message.warning('请填写标签名称');
+    return;
+  }
+  tagSaving.value = true;
+  try {
+    await createTag(name);
+    newTagName.value = '';
+    message.success('标签已添加');
+  } catch (err) {
+    message.error(getErrorMessage(err));
+  } finally {
+    tagSaving.value = false;
+  }
+}
+
+function startEditTag(tag: Tag) {
+  editingTagId.value = tag._id;
+  editingTagName.value = tag.name;
+}
+
+function cancelEditTag() {
+  editingTagId.value = null;
+  editingTagName.value = '';
+}
+
+async function saveEditTag() {
+  if (!editingTagId.value) return;
+  const name = editingTagName.value.trim();
+  if (!name) {
+    message.warning('请填写标签名称');
+    return;
+  }
+  tagSaving.value = true;
+  try {
+    await updateTag(editingTagId.value, name);
+    editingTagId.value = null;
+    editingTagName.value = '';
+    message.success('标签已更新');
+    await load();
+  } catch (err) {
+    message.error(getErrorMessage(err));
+  } finally {
+    tagSaving.value = false;
+  }
+}
+
+async function removeTag(tag: Tag) {
+  try {
+    await deleteTag(tag._id);
+    message.success('标签已删除');
+  } catch (err) {
+    message.error(getErrorMessage(err));
+  }
+}
 </script>
 
 <template>
@@ -179,6 +251,7 @@ function categoryLabel(slug: string) {
           <a-select-option value="reviewing">{{ MASTERY_LABELS.reviewing }}</a-select-option>
           <a-select-option value="mastered">{{ MASTERY_LABELS.mastered }}</a-select-option>
         </a-select>
+        <a-button @click="openTagModal">管理标签</a-button>
         <a-button type="primary" @click="openCreateModal">新建题目</a-button>
       </a-space>
     </div>
@@ -283,6 +356,58 @@ function categoryLabel(slug: string) {
           />
         </a-form-item>
       </a-form>
+    </a-modal>
+
+    <a-modal
+      v-model:open="tagModalOpen"
+      title="管理标签"
+      width="520px"
+      :footer="null"
+    >
+      <a-space style="width: 100%; margin-bottom: 16px">
+        <a-input
+          v-model:value="newTagName"
+          placeholder="新标签名称"
+          style="width: 280px"
+          @press-enter="submitNewTag"
+        />
+        <a-button type="primary" :loading="tagSaving" @click="submitNewTag">添加</a-button>
+      </a-space>
+
+      <a-table
+        :data-source="tags"
+        :pagination="false"
+        row-key="_id"
+        size="small"
+        :columns="[
+          { title: '标签', key: 'name' },
+          { title: '操作', key: 'actions', width: 120 },
+        ]"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'name'">
+            <a-input
+              v-if="editingTagId === record._id"
+              v-model:value="editingTagName"
+              size="small"
+              @press-enter="saveEditTag"
+            />
+            <span v-else>{{ record.name }}</span>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <a-space v-if="editingTagId === record._id">
+              <a-button type="link" size="small" :loading="tagSaving" @click="saveEditTag">保存</a-button>
+              <a-button type="link" size="small" @click="cancelEditTag">取消</a-button>
+            </a-space>
+            <a-space v-else>
+              <a-button type="link" size="small" @click="startEditTag(record)">编辑</a-button>
+              <a-popconfirm title="确定删除该标签？" @confirm="removeTag(record)">
+                <a-button type="link" size="small" danger>删除</a-button>
+              </a-popconfirm>
+            </a-space>
+          </template>
+        </template>
+      </a-table>
     </a-modal>
   </div>
 </template>

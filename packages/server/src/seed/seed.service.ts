@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Category } from '../categories/category.schema';
 import { Question } from '../questions/question.schema';
+import { Tag } from '../tags/tag.schema';
 
 const SEED_CATEGORIES = [
   { slug: 'vue3', name: 'Vue3', order: 1 },
@@ -90,16 +91,28 @@ export class SeedService implements OnModuleInit {
   constructor(
     @InjectModel(Category.name) private categoryModel: Model<Category>,
     @InjectModel(Question.name) private questionModel: Model<Question>,
+    @InjectModel(Tag.name) private tagModel: Model<Tag>,
   ) {}
 
   async onModuleInit() {
-    const count = await this.categoryModel.countDocuments();
-    if (count > 0) return;
+    const categoryCount = await this.categoryModel.countDocuments();
+    if (categoryCount === 0) {
+      await this.categoryModel.insertMany(SEED_CATEGORIES);
+      await this.questionModel.insertMany(SEED_QUESTIONS);
+      this.logger.log(
+        `Initial seed created: ${SEED_CATEGORIES.length} categories, ${SEED_QUESTIONS.length} questions`,
+      );
+    }
 
-    await this.categoryModel.insertMany(SEED_CATEGORIES);
-    await this.questionModel.insertMany(SEED_QUESTIONS);
-    this.logger.log(
-      `Initial seed created: ${SEED_CATEGORIES.length} categories, ${SEED_QUESTIONS.length} questions`,
-    );
+    const tagCount = await this.tagModel.countDocuments();
+    if (tagCount === 0) {
+      const fromSeed = SEED_QUESTIONS.flatMap((q) => q.tags);
+      const fromQuestions = await this.questionModel.distinct('tags');
+      const names = [...new Set([...fromSeed, ...fromQuestions])].filter(Boolean);
+      await this.tagModel.insertMany(
+        names.map((name, index) => ({ name, order: index + 1 })),
+      );
+      this.logger.log(`Initial tags created: ${names.length} tags`);
+    }
   }
 }

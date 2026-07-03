@@ -9,6 +9,12 @@ export interface Category {
   order: number;
 }
 
+export interface Tag {
+  _id: string;
+  name: string;
+  order: number;
+}
+
 export interface Question {
   _id: string;
   title: string;

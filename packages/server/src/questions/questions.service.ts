@@ -27,11 +27,6 @@ export class QuestionsService {
     return this.model.find(filter).sort({ updatedAt: -1 }).lean();
   }
 
-  async findDistinctTags() {
-    const tags = await this.model.distinct('tags');
-    return tags.filter(Boolean).sort((a, b) => a.localeCompare(b, 'zh-CN'));
-  }
-
   async findOne(id: string) {
     const doc = await this.model.findById(id).lean();
     if (!doc) throw new NotFoundException('Question not found');

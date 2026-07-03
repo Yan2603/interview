@@ -5,6 +5,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { AccessLogMiddleware } from './common/access-log.middleware';
 import { CategoriesModule } from './categories/categories.module';
+import { TagsModule } from './tags/tags.module';
 import { QuestionsModule } from './questions/questions.module';
 import { EventsModule } from './events/events.module';
 import { AiModule } from './ai/ai.module';
@@ -55,6 +56,7 @@ const rootEnvPath = join(__dirname, '..', '..', '..', '.env');
         ]
       : []),
     CategoriesModule,
+    TagsModule,
     QuestionsModule,
     EventsModule,
     AiModule,

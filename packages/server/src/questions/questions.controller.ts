@@ -24,11 +24,6 @@ export class QuestionsController {
     return this.service.findAll({ category, search, mastery });
   }
 
-  @Get('tags')
-  findTags() {
-    return this.service.findDistinctTags();
-  }
-
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.service.findOne(id);

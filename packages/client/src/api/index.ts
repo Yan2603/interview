@@ -6,6 +6,7 @@ import type {
   InterviewType,
   Mastery,
   Question,
+  Tag,
 } from '../types';
 
 const http = axios.create({ baseURL: '/api' });
@@ -18,10 +19,23 @@ export const api = {
   createCategory: (data: { slug: string; name: string; order?: number }) =>
     http.post<Category>('/categories', data).then((r) => r.data),
 
+  deleteCategory: (id: string) => http.delete(`/categories/${id}`).then((r) => r.data),
+
+  updateCategory: (id: string, data: { name: string }) =>
+    http.patch<Category>(`/categories/${id}`, data).then((r) => r.data),
+
   getQuestions: (params?: { category?: string; search?: string; mastery?: Mastery }) =>
     http.get<Question[]>('/questions', { params }).then((r) => r.data),
 
-  getTags: () => http.get<string[]>('/questions/tags').then((r) => r.data),
+  getTags: () => http.get<Tag[]>('/tags').then((r) => r.data),
+
+  createTag: (data: { name: string; order?: number }) =>
+    http.post<Tag>('/tags', data).then((r) => r.data),
+
+  updateTag: (id: string, data: { name: string }) =>
+    http.patch<Tag>(`/tags/${id}`, data).then((r) => r.data),
+
+  deleteTag: (id: string) => http.delete(`/tags/${id}`).then((r) => r.data),
 
   getQuestion: (id: string) => http.get<Question>(`/questions/${id}`).then((r) => r.data),
 

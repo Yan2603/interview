@@ -1,9 +1,9 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
-import { CategoriesService } from './categories.service';
+import { TagsService } from './tags.service';
 
-@Controller('categories')
-export class CategoriesController {
-  constructor(private readonly service: CategoriesService) {}
+@Controller('tags')
+export class TagsController {
+  constructor(private readonly service: TagsService) {}
 
   @Get()
   findAll() {
@@ -11,7 +11,7 @@ export class CategoriesController {
   }
 
   @Post()
-  create(@Body() body: { slug: string; name: string; order?: number }) {
+  create(@Body() body: { name: string; order?: number }) {
     return this.service.create(body);
   }
 
