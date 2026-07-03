@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter, RouterView } from 'vue-router';
-import { api } from '../../api';
-import type { Category } from '../../types';
+import { message } from 'ant-design-vue';
+import axios from 'axios';
+import { useCategories } from '../../composables/useCategories';
 
 const route = useRoute();
 const router = useRouter();
-const categories = ref<Category[]>([]);
+const { categories, loadCategories, createCategory } = useCategories();
 
-onMounted(async () => {
-  categories.value = await api.getCategories();
-});
+const categoryModalOpen = ref(false);
+const categoryForm = ref({ name: '', slug: '' });
+const categorySaving = ref(false);
+
+onMounted(loadCategories);
 
 const mainSelectedKeys = computed(() => {
   if (route.path.startsWith('/questions')) return ['questions'];
@@ -26,10 +29,42 @@ const categorySelectedKeys = computed(() => {
 function goCategory(slug: string) {
   router.push({ path: '/questions', query: { category: slug } });
 }
+
+function getErrorMessage(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    const msg = err.response?.data?.message;
+    return Array.isArray(msg) ? msg.join(', ') : (msg ?? err.message);
+  }
+  return err instanceof Error ? err.message : '请求失败';
+}
+
+function openCategoryModal() {
+  categoryForm.value = { name: '', slug: '' };
+  categoryModalOpen.value = true;
+}
+
+async function submitCategory() {
+  const { name, slug } = categoryForm.value;
+  if (!name.trim() || !slug.trim()) {
+    message.warning('请填写分类名称和标识');
+    return;
+  }
+  categorySaving.value = true;
+  try {
+    await createCategory({ name: name.trim(), slug: slug.trim() });
+    categoryModalOpen.value = false;
+    message.success('分类已添加');
+  } catch (err) {
+    message.error(getErrorMessage(err));
+  } finally {
+    categorySaving.value = false;
+  }
+}
 </script>
 
 <template>
-  <a-layout style="min-height: 100vh">
+  <div class="app-layout">
+    <a-layout style="min-height: 100vh">
     <a-layout-sider width="220" theme="light" style="border-right: 1px solid #f0f0f0">
       <div class="logo">
         <img src="/favicon.svg" alt="" class="logo-icon" />
@@ -52,7 +87,15 @@ function goCategory(slug: string) {
 
         <a-menu-divider />
 
-        <a-menu-item-group title="分类">
+        <a-menu-item-group>
+          <template #title>
+            <span class="category-group-title">
+              分类
+              <a-button type="link" size="small" class="add-category-btn" @click.stop="openCategoryModal">
+                + 添加
+              </a-button>
+            </span>
+          </template>
           <a-menu-item
             v-for="cat in categories"
             :key="`cat-${cat.slug}`"
@@ -70,6 +113,23 @@ function goCategory(slug: string) {
       </a-layout-content>
     </a-layout>
   </a-layout>
+
+  <a-modal
+    v-model:open="categoryModalOpen"
+    title="添加分类"
+    :confirm-loading="categorySaving"
+    @ok="submitCategory"
+  >
+    <a-form layout="vertical">
+      <a-form-item label="名称" required>
+        <a-input v-model:value="categoryForm.name" placeholder="如：React" />
+      </a-form-item>
+      <a-form-item label="标识（slug）" required extra="英文小写，用于 URL 筛选，创建后不可修改">
+        <a-input v-model:value="categoryForm.slug" placeholder="如：react" />
+      </a-form-item>
+    </a-form>
+  </a-modal>
+  </div>
 </template>
 
 <style scoped>
@@ -103,5 +163,18 @@ function goCategory(slug: string) {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+.category-group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.add-category-btn {
+  padding: 0;
+  height: auto;
+  font-size: 12px;
 }
 </style>

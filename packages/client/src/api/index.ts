@@ -15,8 +15,13 @@ export const api = {
 
   getCategories: () => http.get<Category[]>('/categories').then((r) => r.data),
 
+  createCategory: (data: { slug: string; name: string; order?: number }) =>
+    http.post<Category>('/categories', data).then((r) => r.data),
+
   getQuestions: (params?: { category?: string; search?: string; mastery?: Mastery }) =>
     http.get<Question[]>('/questions', { params }).then((r) => r.data),
+
+  getTags: () => http.get<string[]>('/questions/tags').then((r) => r.data),
 
   getQuestion: (id: string) => http.get<Question>(`/questions/${id}`).then((r) => r.data),
 

@@ -4,15 +4,18 @@ import { useRoute, useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
 import axios from 'axios';
 import { api, MASTERY_COLORS, MASTERY_LABELS } from '../api';
+import { useCategories } from '../composables/useCategories';
+import { useTags } from '../composables/useTags';
 import { renderMarkdown } from '../utils/markdown';
-import type { Category, Mastery, Question } from '../types';
+import type { Mastery, Question } from '../types';
 
 const route = useRoute();
 const router = useRouter();
+const { categories, loadCategories } = useCategories();
+const { loadTags, tagOptions } = useTags();
 
 const loading = ref(false);
 const questions = ref<Question[]>([]);
-const categories = ref<Category[]>([]);
 const search = ref('');
 const mastery = ref<Mastery | undefined>();
 const aiLoadingId = ref<string | null>(null);
@@ -27,7 +30,11 @@ const categoryName = computed(() => {
 });
 
 const modalOpen = ref(false);
-const form = ref({ title: '', categorySlug: 'vue3', content: '', tags: '' });
+const editingId = ref<string | null>(null);
+const form = ref({ title: '', categorySlug: 'vue3', content: '', tags: [] as string[] });
+
+const isEditing = computed(() => Boolean(editingId.value));
+const formTagOptions = computed(() => tagOptions(form.value.tags));
 
 function hasAiAnswer(record: Question) {
   return Boolean(record.aiAnswer?.trim());
@@ -55,7 +62,7 @@ async function load() {
 }
 
 onMounted(async () => {
-  categories.value = await api.getCategories();
+  await Promise.all([loadCategories(), loadTags()]);
   form.value.categorySlug = categoryFilter.value ?? categories.value[0]?.slug ?? 'vue3';
   await load();
 });
@@ -66,19 +73,54 @@ async function onSearch() {
   await load();
 }
 
-async function createQuestion() {
-  await api.createQuestion({
-    title: form.value.title,
+function openCreateModal() {
+  editingId.value = null;
+  form.value = {
+    title: '',
+    categorySlug: categoryFilter.value ?? categories.value[0]?.slug ?? 'vue3',
+    content: '',
+    tags: [],
+  };
+  modalOpen.value = true;
+}
+
+function openEditModal(record: Question, event?: Event) {
+  event?.stopPropagation();
+  editingId.value = record._id;
+  form.value = {
+    title: record.title,
+    categorySlug: record.categorySlug,
+    content: record.content ?? '',
+    tags: [...(record.tags ?? [])],
+  };
+  modalOpen.value = true;
+}
+
+async function submitQuestion() {
+  if (!form.value.title.trim()) {
+    message.warning('请填写题目标题');
+    return;
+  }
+  const payload = {
+    title: form.value.title.trim(),
     categorySlug: form.value.categorySlug,
     content: form.value.content,
-    tags: form.value.tags
-      .split(/[,，]/)
-      .map((t) => t.trim())
-      .filter(Boolean),
-  });
-  modalOpen.value = false;
-  form.value = { title: '', categorySlug: form.value.categorySlug, content: '', tags: '' };
-  await load();
+    tags: form.value.tags,
+  };
+  try {
+    if (editingId.value) {
+      await api.updateQuestion(editingId.value, payload);
+      message.success('题目已更新');
+    } else {
+      await api.createQuestion(payload);
+      message.success('题目已创建');
+    }
+    modalOpen.value = false;
+    editingId.value = null;
+    await load();
+  } catch (err) {
+    message.error(getErrorMessage(err));
+  }
 }
 
 function openDetail(id: string) {
@@ -109,6 +151,10 @@ async function generateAi(record: Question, event?: Event) {
     aiLoadingId.value = null;
   }
 }
+
+function categoryLabel(slug: string) {
+  return categories.value.find((c) => c.slug === slug)?.name ?? slug;
+}
 </script>
 
 <template>
@@ -133,7 +179,7 @@ async function generateAi(record: Question, event?: Event) {
           <a-select-option value="reviewing">{{ MASTERY_LABELS.reviewing }}</a-select-option>
           <a-select-option value="mastered">{{ MASTERY_LABELS.mastered }}</a-select-option>
         </a-select>
-        <a-button type="primary" @click="modalOpen = true">新建题目</a-button>
+        <a-button type="primary" @click="openCreateModal">新建题目</a-button>
       </a-space>
     </div>
 
@@ -146,13 +192,17 @@ async function generateAi(record: Question, event?: Event) {
         { title: '掌握度', key: 'mastery', width: 100 },
         { title: 'AI', key: 'ai', width: 180 },
         { title: '标签', key: 'tags', width: 180 },
+        { title: '操作', key: 'actions', width: 80 },
       ]"
       row-key="_id"
       :pagination="{ pageSize: 20 }"
       :custom-row="(record: Question) => ({ onClick: () => openDetail(record._id), style: { cursor: 'pointer' } })"
     >
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'mastery'">
+        <template v-if="column.key === 'categorySlug'">
+          {{ categoryLabel(record.categorySlug) }}
+        </template>
+        <template v-else-if="column.key === 'mastery'">
           <a-tag :color="MASTERY_COLORS[record.mastery as Mastery]">
             {{ MASTERY_LABELS[record.mastery as Mastery] }}
           </a-tag>
@@ -180,6 +230,9 @@ async function generateAi(record: Question, event?: Event) {
         <template v-else-if="column.key === 'tags'">
           <a-tag v-for="tag in record.tags" :key="tag">{{ tag }}</a-tag>
         </template>
+        <template v-else-if="column.key === 'actions'">
+          <a-button type="link" size="small" @click="openEditModal(record, $event)">编辑</a-button>
+        </template>
       </template>
     </a-table>
 
@@ -201,7 +254,11 @@ async function generateAi(record: Question, event?: Event) {
       </template>
     </a-modal>
 
-    <a-modal v-model:open="modalOpen" title="新建题目" @ok="createQuestion">
+    <a-modal
+      v-model:open="modalOpen"
+      :title="isEditing ? '编辑题目' : '新建题目'"
+      @ok="submitQuestion"
+    >
       <a-form layout="vertical">
         <a-form-item label="标题" required>
           <a-input v-model:value="form.title" />
@@ -216,8 +273,14 @@ async function generateAi(record: Question, event?: Event) {
         <a-form-item label="题目描述（可选）">
           <a-textarea v-model:value="form.content" :rows="3" />
         </a-form-item>
-        <a-form-item label="标签（逗号分隔）">
-          <a-input v-model:value="form.tags" />
+        <a-form-item label="标签">
+          <a-select
+            v-model:value="form.tags"
+            mode="multiple"
+            placeholder="选择标签"
+            :options="formTagOptions"
+            style="width: 100%"
+          />
         </a-form-item>
       </a-form>
     </a-modal>
