@@ -1,0 +1,15 @@
+{
+  "name": "interview",
+  "version": "1.0.0",
+  "private": true,
+  "description": "面试驾驶舱 — 八股题库、面试日历、AI 作答",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @interview/server --filter @interview/client dev",
+    "dev:server": "pnpm --filter @interview/server start:dev",
+    "dev:client": "pnpm --filter @interview/client dev",
+    "build": "pnpm build:client && pnpm build:server",
+    "build:server": "pnpm --filter @interview/server build",
+    "build:client": "pnpm --filter @interview/client build",
+    "start:prod": "pnpm --filter @interview/server start:prod"
+  }
+}
