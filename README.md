@@ -21,12 +21,12 @@ pnpm dev               # 前端 :5173，后端 :3000
 ## 生产部署（云服务器）
 
 ```bash
-cp .env.example .env   # 填写 AI_API_KEY 等
+cp .env.example .env   # 填写 AI_API_KEY 等（MONGODB_URI 无需改，compose 会注入 mongo 服务地址）
 docker compose up -d --build
-# 访问 http://<server-ip>:3000
+# 访问 http://<server-ip>  （Nginx :80 反代 /api 到后端）
 ```
 
-生产模式下 NestJS 同时托管前端静态资源与 `/api`。
+Docker 内 MongoDB 使用 compose 服务名 `mongo`，**不要**在 `.env` 里写 `host.docker.internal`（Linux 云服务器无法解析该域名）。
 
 ## 功能
 

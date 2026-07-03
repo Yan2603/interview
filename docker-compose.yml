@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  # 前端：Nginx 托管静态资源
   nginx:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
@@ -13,26 +13,36 @@ services:
     networks:
       - interview-net
 
-  # 后端：Node.js 应用（仅提供 API）
   app:
     build:
       context: .
-      dockerfile: Dockerfile.app  # 需要单独为后端准备 Dockerfile
+      dockerfile: Dockerfile.app
+    restart: unless-stopped
     environment:
-      - MONGO_URI=mongodb://mongo:27017/interview
-      # 添加其他必要环境变量，如 AI_API_KEY
+      MONGODB_URI: mongodb://mongo:27017/interview
+      PORT: 3000
+      NODE_ENV: production
+      AI_API_KEY: ${AI_API_KEY}
+      AI_BASE_URL: ${AI_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      AI_MODEL: ${AI_MODEL:-qwen-max}
     expose:
       - "3000"
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     networks:
       - interview-net
 
-  # 数据库：MongoDB
   mongo:
     image: docker.m.daocloud.io/library/mongo:7
+    restart: unless-stopped
     volumes:
       - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - interview-net
 

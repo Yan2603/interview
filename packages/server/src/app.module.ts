@@ -20,7 +20,11 @@ const rootEnvPath = join(__dirname, '..', '..', '..', '.env');
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [rootEnvPath, join(process.cwd(), '.env'), join(process.cwd(), '..', '..', '.env')],
+      // 生产/Docker 只读 process.env，避免误加载 .env 里的 localhost / host.docker.internal
+      ignoreEnvFile: isProd,
+      envFilePath: isProd
+        ? undefined
+        : [rootEnvPath, join(process.cwd(), '.env'), join(process.cwd(), '..', '..', '.env')],
     }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
