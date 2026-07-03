@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 import { message } from 'ant-design-vue';
-import { api } from '../api';
-import type { EventStatus, InterviewEvent } from '../types';
+import { api, INTERVIEW_TYPE_LABELS } from '../api';
+import type { EventStatus, InterviewEvent, InterviewType } from '../types';
 
 const route = useRoute();
 const router = useRouter();
@@ -16,10 +16,18 @@ const form = ref({
   company: '',
   round: '',
   start: dayjs(),
+  interviewType: 'remote' as InterviewType,
+  location: '',
   link: '',
   notes: '',
   status: 'scheduled' as EventStatus,
 });
+
+const isRemote = computed(() => form.value.interviewType === 'remote');
+
+const locationPlaceholder = computed(() =>
+  isRemote.value ? '如：腾讯会议 / 飞书，或线上平台说明' : '如：北京市朝阳区 XX 大厦 3 楼',
+);
 
 async function load() {
   loading.value = true;
@@ -29,6 +37,8 @@ async function load() {
       company: event.value.company,
       round: event.value.round,
       start: dayjs(event.value.start),
+      interviewType: event.value.interviewType ?? 'remote',
+      location: event.value.location ?? '',
       link: event.value.link,
       notes: event.value.notes,
       status: event.value.status,
@@ -48,6 +58,8 @@ async function save() {
       company: form.value.company,
       round: form.value.round,
       start: form.value.start.toISOString(),
+      interviewType: form.value.interviewType,
+      location: form.value.location,
       link: form.value.link,
       notes: form.value.notes,
       status: form.value.status,
@@ -76,8 +88,14 @@ async function removeEvent() {
         </a-popconfirm>
       </div>
 
-      <h2>{{ form.company }} · {{ form.round }}</h2>
+      <h2>
+        {{ form.company }} · {{ form.round }}
+        <a-tag :color="isRemote ? 'blue' : 'green'" style="margin-left: 8px; vertical-align: middle">
+          {{ INTERVIEW_TYPE_LABELS[form.interviewType] }}
+        </a-tag>
+      </h2>
       <p style="color: #666">{{ dayjs(event.start).format('YYYY-MM-DD HH:mm') }}</p>
+      <p v-if="form.location" style="color: #666">地点：{{ form.location }}</p>
 
       <a-card>
         <a-form layout="vertical">
@@ -101,6 +119,12 @@ async function removeEvent() {
               style="width: 100%"
             />
           </a-form-item>
+          <a-form-item label="面试方式">
+            <a-radio-group v-model:value="form.interviewType">
+              <a-radio value="remote">{{ INTERVIEW_TYPE_LABELS.remote }}</a-radio>
+              <a-radio value="onsite">{{ INTERVIEW_TYPE_LABELS.onsite }}</a-radio>
+            </a-radio-group>
+          </a-form-item>
           <a-form-item label="状态">
             <a-select v-model:value="form.status">
               <a-select-option value="scheduled">待面试</a-select-option>
@@ -108,8 +132,11 @@ async function removeEvent() {
               <a-select-option value="cancelled">已取消</a-select-option>
             </a-select>
           </a-form-item>
-          <a-form-item label="线上链接">
-            <a-input v-model:value="form.link" />
+          <a-form-item label="面试地点">
+            <a-input v-model:value="form.location" :placeholder="locationPlaceholder" />
+          </a-form-item>
+          <a-form-item v-if="isRemote" label="会议链接">
+            <a-input v-model:value="form.link" placeholder="腾讯会议 / 飞书链接" />
           </a-form-item>
           <a-form-item label="面后复盘">
             <a-textarea

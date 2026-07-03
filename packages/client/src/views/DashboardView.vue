@@ -2,12 +2,23 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import dayjs from 'dayjs';
-import { api } from '../api';
-import type { DashboardSummary } from '../types';
+import { api, INTERVIEW_TYPE_LABELS } from '../api';
+import type { DashboardSummary, InterviewType } from '../types';
 
 const router = useRouter();
 const loading = ref(true);
 const summary = ref<DashboardSummary | null>(null);
+
+function eventTypeLabel(type?: InterviewType) {
+  return INTERVIEW_TYPE_LABELS[type ?? 'remote'];
+}
+
+function eventDescription(item: DashboardSummary['upcomingEvents'][number]) {
+  const time = dayjs(item.start).format('YYYY-MM-DD HH:mm');
+  const parts = [time, eventTypeLabel(item.interviewType)];
+  if (item.location) parts.push(item.location);
+  return parts.join(' · ');
+}
 
 onMounted(async () => {
   try {
@@ -45,7 +56,7 @@ onMounted(async () => {
               >
                 <a-list-item-meta
                   :title="`${item.company} · ${item.round}`"
-                  :description="dayjs(item.start).format('YYYY-MM-DD HH:mm')"
+                  :description="eventDescription(item)"
                 />
               </a-list-item>
             </template>

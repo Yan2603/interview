@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
 export type EventStatus = 'scheduled' | 'completed' | 'cancelled';
+export type InterviewType = 'remote' | 'onsite';
 
 export type InterviewEventDocument = HydratedDocument<InterviewEvent>;
 
@@ -21,6 +22,12 @@ export class InterviewEvent {
 
   @Prop({ default: '' })
   link!: string;
+
+  @Prop({ enum: ['remote', 'onsite'], default: 'remote' })
+  interviewType!: InterviewType;
+
+  @Prop({ default: '' })
+  location!: string;
 
   @Prop({ default: '' })
   notes!: string;

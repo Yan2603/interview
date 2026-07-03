@@ -9,7 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { EventsService } from './events.service';
-import { EventStatus } from './event.schema';
+import { EventStatus, InterviewType } from './event.schema';
 
 @Controller('events')
 export class EventsController {
@@ -34,6 +34,8 @@ export class EventsController {
       start: string;
       end?: string;
       link?: string;
+      interviewType?: InterviewType;
+      location?: string;
       notes?: string;
       status?: EventStatus;
       relatedQuestionIds?: string[];
@@ -56,6 +58,8 @@ export class EventsController {
       start: string;
       end: string;
       link: string;
+      interviewType: InterviewType;
+      location: string;
       notes: string;
       status: EventStatus;
       relatedQuestionIds: string[];

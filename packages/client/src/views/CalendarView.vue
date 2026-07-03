@@ -2,8 +2,8 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import dayjs, { Dayjs } from 'dayjs';
-import { api } from '../api';
-import type { InterviewEvent } from '../types';
+import { api, INTERVIEW_TYPE_LABELS } from '../api';
+import type { InterviewEvent, InterviewType } from '../types';
 
 const router = useRouter();
 const loading = ref(false);
@@ -15,9 +15,17 @@ const form = ref({
   company: '',
   round: '一面',
   start: dayjs(),
+  interviewType: 'remote' as InterviewType,
+  location: '',
   link: '',
   notes: '',
 });
+
+const isRemote = computed(() => form.value.interviewType === 'remote');
+
+const locationPlaceholder = computed(() =>
+  isRemote.value ? '如：腾讯会议 / 飞书，或线上平台说明' : '如：北京市朝阳区 XX 大厦 3 楼',
+);
 
 const monthRange = computed(() => ({
   from: selectedDate.value.startOf('month').toISOString(),
@@ -32,6 +40,10 @@ const eventsByDate = computed(() => {
   }
   return map;
 });
+
+function eventTypeLabel(type?: InterviewType) {
+  return INTERVIEW_TYPE_LABELS[type ?? 'remote'];
+}
 
 async function loadEvents() {
   loading.value = true;
@@ -54,6 +66,8 @@ function openCreate(date?: Dayjs) {
     company: '',
     round: '一面',
     start: date ?? dayjs().hour(14).minute(0),
+    interviewType: 'remote',
+    location: '',
     link: '',
     notes: '',
   };
@@ -65,6 +79,8 @@ async function createEvent() {
     company: form.value.company,
     round: form.value.round,
     start: form.value.start.toISOString(),
+    interviewType: form.value.interviewType,
+    location: form.value.location,
     link: form.value.link,
     notes: form.value.notes,
   });
@@ -90,7 +106,9 @@ function goDetail(id: string) {
           <ul class="events">
             <li v-for="evt in eventsByDate[current.format('YYYY-MM-DD')] ?? []" :key="evt._id">
               <a-badge status="processing" />
-              <a @click.stop="goDetail(evt._id)">{{ evt.company }} · {{ evt.round }}</a>
+              <a @click.stop="goDetail(evt._id)">
+                [{{ eventTypeLabel(evt.interviewType) }}] {{ evt.company }} · {{ evt.round }}
+              </a>
             </li>
           </ul>
         </template>
@@ -113,8 +131,17 @@ function goDetail(id: string) {
             style="width: 100%"
           />
         </a-form-item>
-        <a-form-item label="线上链接">
-          <a-input v-model:value="form.link" />
+        <a-form-item label="面试方式" required>
+          <a-radio-group v-model:value="form.interviewType">
+            <a-radio value="remote">{{ INTERVIEW_TYPE_LABELS.remote }}</a-radio>
+            <a-radio value="onsite">{{ INTERVIEW_TYPE_LABELS.onsite }}</a-radio>
+          </a-radio-group>
+        </a-form-item>
+        <a-form-item label="面试地点">
+          <a-input v-model:value="form.location" :placeholder="locationPlaceholder" />
+        </a-form-item>
+        <a-form-item v-if="isRemote" label="会议链接">
+          <a-input v-model:value="form.link" placeholder="腾讯会议 / 飞书链接" />
         </a-form-item>
         <a-form-item label="备注">
           <a-textarea v-model:value="form.notes" :rows="3" />

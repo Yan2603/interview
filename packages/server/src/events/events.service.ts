@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { InterviewEvent } from './event.schema';
+import { InterviewEvent, InterviewType } from './event.schema';
 
 @Injectable()
 export class EventsService {
@@ -29,6 +29,8 @@ export class EventsService {
     start: Date;
     end?: Date;
     link?: string;
+    interviewType?: InterviewType;
+    location?: string;
     notes?: string;
     status?: InterviewEvent['status'];
     relatedQuestionIds?: string[];

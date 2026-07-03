@@ -1,5 +1,6 @@
 export type Mastery = 'new' | 'reviewing' | 'mastered';
 export type EventStatus = 'scheduled' | 'completed' | 'cancelled';
+export type InterviewType = 'remote' | 'onsite';
 
 export interface Category {
   _id: string;
@@ -28,6 +29,8 @@ export interface InterviewEvent {
   start: string;
   end?: string;
   link: string;
+  interviewType: InterviewType;
+  location: string;
   notes: string;
   status: EventStatus;
   relatedQuestionIds: string[];

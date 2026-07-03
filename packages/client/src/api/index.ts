@@ -3,6 +3,7 @@ import type {
   Category,
   DashboardSummary,
   InterviewEvent,
+  InterviewType,
   Mastery,
   Question,
 } from '../types';
@@ -46,6 +47,8 @@ export const api = {
     start: string;
     end?: string;
     link?: string;
+    interviewType?: InterviewEvent['interviewType'];
+    location?: string;
     notes?: string;
     status?: InterviewEvent['status'];
   }) => http.post<InterviewEvent>('/events', data).then((r) => r.data),
@@ -66,4 +69,9 @@ export const MASTERY_COLORS: Record<Mastery, string> = {
   new: 'default',
   reviewing: 'processing',
   mastered: 'success',
+};
+
+export const INTERVIEW_TYPE_LABELS: Record<InterviewType, string> = {
+  remote: '远程',
+  onsite: '线下',
 };
