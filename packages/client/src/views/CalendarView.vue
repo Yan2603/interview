@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import dayjs, { Dayjs } from 'dayjs';
 import { api, INTERVIEW_TYPE_LABELS } from '../api';
@@ -45,12 +45,34 @@ function eventTypeLabel(type?: InterviewType) {
   return INTERVIEW_TYPE_LABELS[type ?? 'remote'];
 }
 
+function eventLabel(evt: InterviewEvent) {
+  return `[${eventTypeLabel(evt.interviewType)}] ${evt.company} · ${evt.round}`;
+}
+
+function eventTooltipLines(evt: InterviewEvent) {
+  const lines = [
+    `${evt.company} · ${evt.round}`,
+    `${dayjs(evt.start).format('YYYY-MM-DD HH:mm')} · ${eventTypeLabel(evt.interviewType)}`,
+  ];
+  if (evt.location) lines.push(evt.location);
+  return lines;
+}
+
+/** 去掉 Ant Design Calendar 单元格自带的 date title，避免悬停弹出重复日期 */
+async function stripCellTitles() {
+  await nextTick();
+  document
+    .querySelectorAll('.ant-picker-calendar .ant-picker-cell')
+    .forEach((el) => el.removeAttribute('title'));
+}
+
 async function loadEvents() {
   loading.value = true;
   try {
     events.value = await api.getEvents(monthRange.value);
   } finally {
     loading.value = false;
+    await stripCellTitles();
   }
 }
 
@@ -105,10 +127,15 @@ function goDetail(id: string) {
         <template #dateCellRender="{ current }">
           <ul class="events">
             <li v-for="evt in eventsByDate[current.format('YYYY-MM-DD')] ?? []" :key="evt._id">
-              <a-badge status="processing" />
-              <a @click.stop="goDetail(evt._id)">
-                [{{ eventTypeLabel(evt.interviewType) }}] {{ evt.company }} · {{ evt.round }}
-              </a>
+              <a-tooltip placement="topLeft" :mouse-enter-delay="0.3">
+                <template #title>
+                  <div v-for="(line, i) in eventTooltipLines(evt)" :key="i">{{ line }}</div>
+                </template>
+                <a class="event-link" @click.stop="goDetail(evt._id)">
+                  <span class="event-dot" :class="evt.interviewType === 'onsite' ? 'onsite' : 'remote'" />
+                  {{ eventLabel(evt) }}
+                </a>
+              </a-tooltip>
             </li>
           </ul>
         </template>
@@ -167,13 +194,50 @@ function goDetail(id: string) {
 }
 
 .events li {
+  margin-top: 2px;
+}
+
+.event-link {
+  display: block;
+  color: #1677ff;
+  cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.5;
 }
 
-.events a {
-  color: #1677ff;
-  cursor: pointer;
+.event-link:hover {
+  color: #4096ff;
+}
+
+.event-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.event-dot.remote {
+  background: #1677ff;
+}
+
+.event-dot.onsite {
+  background: #52c41a;
+}
+
+/* 悬停时仅轻微高亮，避免整块蓝色 + 原生日期 tooltip */
+:deep(.ant-picker-calendar-full .ant-picker-cell:hover .ant-picker-calendar-date) {
+  background: #fafafa;
+}
+
+:deep(.ant-picker-calendar-full .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-calendar-date) {
+  background: #e6f4ff;
+}
+
+:deep(.ant-picker-calendar-full .ant-picker-cell-in-view.ant-picker-cell-selected:hover .ant-picker-calendar-date) {
+  background: #bae0ff;
 }
 </style>
