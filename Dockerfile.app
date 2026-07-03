@@ -5,8 +5,11 @@ WORKDIR /app
 FROM base AS deps
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/server/package.json packages/server/
+COPY packages/server /app/packages/server
 COPY packages/client/package.json packages/client/
-RUN pnpm install --filter @interview/server...
+RUN echo "node-linker=hoisted" >> .npmrc
+RUN pnpm install
+RUN echo "node-linker=hoisted" >> .npmrc
 
 FROM deps AS build
 COPY packages/server ./packages/server
