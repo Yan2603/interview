@@ -6,6 +6,7 @@ import axios from 'axios';
 import { api, MASTERY_COLORS, MASTERY_LABELS } from '../api';
 import { useCategories } from '../composables/useCategories';
 import { useTags } from '../composables/useTags';
+import QuestionPreviewDrawer from '../components/QuestionPreviewDrawer.vue';
 import { renderMarkdown } from '../utils/markdown';
 import type { Mastery, Question, Tag } from '../types';
 
@@ -19,8 +20,10 @@ const questions = ref<Question[]>([]);
 const search = ref('');
 const mastery = ref<Mastery | undefined>();
 const aiLoadingId = ref<string | null>(null);
-const previewOpen = ref(false);
-const previewQuestion = ref<Question | null>(null);
+const drawerOpen = ref(false);
+const drawerQuestion = ref<Question | null>(null);
+const aiPreviewOpen = ref(false);
+const aiPreviewQuestion = ref<Question | null>(null);
 
 const categoryFilter = computed(() => route.query.category as string | undefined);
 
@@ -129,14 +132,31 @@ async function submitQuestion() {
   }
 }
 
-function openDetail(id: string) {
+function openDetail(id: string, event?: Event) {
+  event?.stopPropagation();
   router.push(`/questions/${id}`);
 }
 
-function openPreview(record: Question, event?: Event) {
+function openDrawer(record: Question) {
+  drawerQuestion.value = record;
+  drawerOpen.value = true;
+}
+
+function openAiPreview(record: Question, event?: Event) {
   event?.stopPropagation();
-  previewQuestion.value = record;
-  previewOpen.value = true;
+  aiPreviewQuestion.value = record;
+  aiPreviewOpen.value = true;
+}
+
+function handleDrawerUpdated(updated: Question) {
+  drawerQuestion.value = updated;
+  const idx = questions.value.findIndex((q) => q._id === updated._id);
+  if (idx >= 0) {
+    questions.value[idx] = updated;
+  }
+  if (mastery.value && updated.mastery !== mastery.value) {
+    load();
+  }
 }
 
 async function generateAi(record: Question, event?: Event) {
@@ -144,12 +164,14 @@ async function generateAi(record: Question, event?: Event) {
   aiLoadingId.value = record._id;
   try {
     const { aiAnswer } = await api.generateAiAnswer(record._id);
+    const updated = { ...record, aiAnswer };
     const idx = questions.value.findIndex((q) => q._id === record._id);
     if (idx >= 0) {
-      questions.value[idx] = { ...questions.value[idx], aiAnswer };
+      questions.value[idx] = updated;
     }
-    previewQuestion.value = { ...record, aiAnswer };
-    previewOpen.value = true;
+    drawerQuestion.value = updated;
+    aiPreviewQuestion.value = updated;
+    aiPreviewOpen.value = true;
     message.success('AI 作答完成');
   } catch (err) {
     message.error(getErrorMessage(err));
@@ -269,10 +291,15 @@ async function removeTag(tag: Tag) {
       ]"
       row-key="_id"
       :pagination="{ pageSize: 20 }"
-      :custom-row="(record: Question) => ({ onClick: () => openDetail(record._id), style: { cursor: 'pointer' } })"
+      :custom-row="(record: Question) => ({ onClick: () => openDrawer(record), style: { cursor: 'pointer' } })"
     >
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'categorySlug'">
+        <template v-if="column.key === 'title'">
+          <a class="question-title-link" @click="openDetail(record._id, $event)">
+            {{ record.title }}
+          </a>
+        </template>
+        <template v-else-if="column.key === 'categorySlug'">
           {{ categoryLabel(record.categorySlug) }}
         </template>
         <template v-else-if="column.key === 'mastery'">
@@ -286,7 +313,7 @@ async function removeTag(tag: Tag) {
               v-if="hasAiAnswer(record)"
               color="success"
               class="ai-tag"
-              @click="openPreview(record)"
+              @click="openAiPreview(record, $event)"
             >
               已有 AI 答案
             </a-tag>
@@ -309,22 +336,31 @@ async function removeTag(tag: Tag) {
       </template>
     </a-table>
 
+    <QuestionPreviewDrawer
+      v-model:open="drawerOpen"
+      :question="drawerQuestion"
+      @updated="handleDrawerUpdated"
+    />
+
     <a-modal
-      v-model:open="previewOpen"
-      :title="previewQuestion?.title"
+      v-model:open="aiPreviewOpen"
+      :title="aiPreviewQuestion?.title"
       width="720px"
       :footer="null"
     >
-      <template v-if="previewQuestion?.aiAnswer">
-        <div class="markdown" v-html="renderMarkdown(previewQuestion.aiAnswer)" />
-        <a-button
-          type="link"
-          style="padding-left: 0; margin-top: 12px"
-          @click="openDetail(previewQuestion!._id)"
-        >
-          进入题目详情 →
-        </a-button>
-      </template>
+      <div
+        v-if="aiPreviewQuestion?.aiAnswer"
+        class="markdown"
+        v-html="renderMarkdown(aiPreviewQuestion.aiAnswer)"
+      />
+      <a-button
+        v-if="aiPreviewQuestion"
+        type="link"
+        style="padding-left: 0; margin-top: 12px"
+        @click="openDetail(aiPreviewQuestion._id)"
+      >
+        进入题目详情 →
+      </a-button>
     </a-modal>
 
     <a-modal
@@ -418,6 +454,15 @@ async function removeTag(tag: Tag) {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+}
+
+.question-title-link {
+  color: #1677ff;
+  font-weight: 500;
+}
+
+.question-title-link:hover {
+  color: #4096ff;
 }
 
 .ai-tag {
