@@ -4,3 +4,7 @@ dist
 *.log
 .DS_Store
 packages/server/public
+
+# 日志目录
+logs/
+

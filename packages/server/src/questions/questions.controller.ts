@@ -10,6 +10,8 @@ import {
 } from '@nestjs/common';
 import { QuestionsService } from './questions.service';
 import { Mastery } from './question.schema';
+import { CreateQuestionDto } from './dto/create-question.dto';
+import { UpdateQuestionDto } from './dto/update-question.dto';
 
 @Controller('questions')
 export class QuestionsController {
@@ -30,34 +32,13 @@ export class QuestionsController {
   }
 
   @Post()
-  create(
-    @Body()
-    body: {
-      title: string;
-      categorySlug: string;
-      content?: string;
-      myNotes?: string;
-      tags?: string[];
-    },
-  ) {
-    return this.service.create(body);
+  create(@Body() dto: CreateQuestionDto) {
+    return this.service.create(dto);
   }
 
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body()
-    body: Partial<{
-      title: string;
-      categorySlug: string;
-      content: string;
-      myNotes: string;
-      aiAnswer: string;
-      mastery: Mastery;
-      tags: string[];
-    }>,
-  ) {
-    return this.service.update(id, body);
+  update(@Param('id') id: string, @Body() dto: UpdateQuestionDto) {
+    return this.service.update(id, dto);
   }
 
   @Delete(':id')

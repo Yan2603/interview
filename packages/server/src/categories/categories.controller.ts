@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
+import { CreateCategoryDto } from './dto/create-category.dto';
+import { UpdateCategoryDto } from './dto/update-category.dto';
 
 @Controller('categories')
 export class CategoriesController {
@@ -11,13 +13,13 @@ export class CategoriesController {
   }
 
   @Post()
-  create(@Body() body: { slug: string; name: string; order?: number }) {
-    return this.service.create(body);
+  create(@Body() dto: CreateCategoryDto) {
+    return this.service.create(dto);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() body: { name: string }) {
-    return this.service.update(id, body);
+  update(@Param('id') id: string, @Body() dto: UpdateCategoryDto) {
+    return this.service.update(id, dto);
   }
 
   @Delete(':id')

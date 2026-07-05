@@ -39,19 +39,32 @@ export class LangchainClient {
     this.logger.log(`AI invoke start model=${model} promptLen=${user.length}`);
 
     const start = Date.now();
-    try {
-      const result = await this.getLlm().invoke([
-        { role: 'system', content: system },
-        { role: 'human', content: user },
-      ]);
-      const content = result.content;
-      const text = typeof content === 'string' ? content : JSON.stringify(content);
-      this.logger.log(`AI invoke ok ${Date.now() - start}ms answerLen=${text.length}`);
-      return text;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`AI invoke failed ${Date.now() - start}ms: ${message}`);
-      throw err;
+    let lastError: Error | null = null;
+
+    // 重试机制：最多重试 3 次
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const result = await this.getLlm().invoke([
+          { role: 'system', content: system },
+          { role: 'human', content: user },
+        ]);
+        const content = result.content;
+        const text = typeof content === 'string' ? content : JSON.stringify(content);
+        this.logger.log(`AI invoke ok ${Date.now() - start}ms answerLen=${text.length}`);
+        return text;
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        const message = lastError.message;
+
+        if (attempt < 3) {
+          this.logger.warn(`AI invoke attempt ${attempt} failed, retrying in ${1000 * attempt}ms: ${message}`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        } else {
+          this.logger.error(`AI invoke failed after ${attempt} attempts ${Date.now() - start}ms: ${message}`);
+        }
+      }
     }
+
+    throw lastError;
   }
 }

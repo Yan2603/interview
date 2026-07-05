@@ -2,6 +2,9 @@ import { Logger, MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { WinstonModule } from 'nest-winston';
 import { join } from 'path';
 import { AccessLogMiddleware } from './common/access-log.middleware';
 import { CategoriesModule } from './categories/categories.module';
@@ -11,21 +14,20 @@ import { EventsModule } from './events/events.module';
 import { AiModule } from './ai/ai.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { SeedModule } from './seed/seed.module';
+import { HealthModule } from './health/health.module';
+import { winstonConfig } from './config/winston.config';
 
 const isProd = process.env.NODE_ENV === 'production';
-
-// monorepo 根目录 .env（pnpm --filter 时 cwd 在 packages/server）
+// monorepo 根目录 .env（dev 时 cwd 在 packages/server，不能只用 process.cwd()）
 const rootEnvPath = join(__dirname, '..', '..', '..', '.env');
 
 @Module({
   imports: [
+    WinstonModule.forRoot(winstonConfig),
     ConfigModule.forRoot({
       isGlobal: true,
-      // 生产/Docker 只读 process.env，避免误加载 .env 里的 localhost / host.docker.internal
       ignoreEnvFile: isProd,
-      envFilePath: isProd
-        ? undefined
-        : [rootEnvPath, join(process.cwd(), '.env'), join(process.cwd(), '..', '..', '.env')],
+      envFilePath: isProd ? undefined : [rootEnvPath, join(process.cwd(), '.env')],
     }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
@@ -46,6 +48,10 @@ const rootEnvPath = join(__dirname, '..', '..', '..', '.env');
       },
       inject: [ConfigService],
     }),
+    ThrottlerModule.forRoot([{
+      ttl: 60000,    // 60 秒
+      limit: 100,    // 最多 100 次请求
+    }]),
     ...(isProd
       ? [
           ServeStaticModule.forRoot({
@@ -55,6 +61,7 @@ const rootEnvPath = join(__dirname, '..', '..', '..', '.env');
           }),
         ]
       : []),
+    HealthModule,
     CategoriesModule,
     TagsModule,
     QuestionsModule,
@@ -62,6 +69,12 @@ const rootEnvPath = join(__dirname, '..', '..', '..', '.env');
     AiModule,
     DashboardModule,
     SeedModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule implements NestModule {

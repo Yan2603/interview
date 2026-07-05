@@ -2,12 +2,12 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
-import axios from 'axios';
 import { api, MASTERY_COLORS, MASTERY_LABELS } from '../api';
 import { useCategories } from '../composables/useCategories';
 import { useTags } from '../composables/useTags';
 import QuestionPreviewDrawer from '../components/QuestionPreviewDrawer.vue';
 import { renderMarkdown } from '../utils/markdown';
+import { getErrorMessage, createDebouncedSearch } from '../utils/error';
 import type { Mastery, Question, Tag } from '../types';
 
 const route = useRoute();
@@ -49,14 +49,6 @@ function hasAiAnswer(record: Question) {
   return Boolean(record.aiAnswer?.trim());
 }
 
-function getErrorMessage(err: unknown): string {
-  if (axios.isAxiosError(err)) {
-    const msg = err.response?.data?.message;
-    return Array.isArray(msg) ? msg.join(', ') : (msg ?? err.message);
-  }
-  return err instanceof Error ? err.message : '请求失败';
-}
-
 async function load() {
   loading.value = true;
   try {
@@ -70,6 +62,9 @@ async function load() {
   }
 }
 
+// 使用防抖优化搜索
+const debouncedSearch = createDebouncedSearch(load, 500);
+
 onMounted(async () => {
   await Promise.all([loadCategories(), loadTags()]);
   form.value.categorySlug = categoryFilter.value ?? categories.value[0]?.slug ?? 'vue3';
@@ -79,7 +74,7 @@ onMounted(async () => {
 watch([() => route.query.category, mastery], load);
 
 async function onSearch() {
-  await load();
+  debouncedSearch();
 }
 
 function openCreateModal() {

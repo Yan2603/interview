@@ -2,11 +2,11 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
-import axios from 'axios';
 import { api, MASTERY_LABELS } from '../api';
 import { useCategories } from '../composables/useCategories';
 import { useTags } from '../composables/useTags';
 import { renderMarkdown } from '../utils/markdown';
+import { getErrorMessage } from '../utils/error';
 import type { Mastery, Question } from '../types';
 
 const route = useRoute();
@@ -30,14 +30,6 @@ const categoryLabel = computed(() => {
   return categories.value.find((c) => c.slug === question.value!.categorySlug)?.name
     ?? question.value.categorySlug;
 });
-
-function getErrorMessage(err: unknown): string {
-  if (axios.isAxiosError(err)) {
-    const msg = err.response?.data?.message;
-    return Array.isArray(msg) ? msg.join(', ') : (msg ?? err.message);
-  }
-  return err instanceof Error ? err.message : '请求失败';
-}
 
 function syncEditForm() {
   if (!question.value) return;

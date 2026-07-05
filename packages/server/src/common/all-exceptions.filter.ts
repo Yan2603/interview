@@ -4,12 +4,16 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
-  Logger,
+  Inject,
+  LoggerService,
 } from '@nestjs/common';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
-  private readonly logger = new Logger('Exception');
+  constructor(
+    @Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: LoggerService,
+  ) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -28,15 +32,29 @@ export class AllExceptionsFilter implements ExceptionFilter {
           ? exception.message
           : 'Internal server error';
 
+    // 记录完整错误信息到日志（包含栈信息）
+    const errorLog = {
+      method: request.method,
+      url: request.url,
+      statusCode: status,
+      message: typeof message === 'string' ? message : JSON.stringify(message),
+      timestamp: new Date().toISOString(),
+    };
+
     this.logger.error(
       `${request.method} ${request.url} ${status} - ${JSON.stringify(message)}`,
       exception instanceof Error ? exception.stack : undefined,
+      'Exception',
     );
 
-    response.status(status).json(
-      typeof message === 'string'
+    // 生产环境隐藏 500 错误详情
+    const isProd = process.env.NODE_ENV === 'production';
+    const responseMessage = isProd && status === 500
+      ? { statusCode: 500, message: 'Internal server error' }
+      : typeof message === 'string'
         ? { statusCode: status, message }
-        : message,
-    );
+        : message;
+
+    response.status(status).json(responseMessage);
   }
 }

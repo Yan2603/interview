@@ -30,3 +30,6 @@ export class Question {
 }
 
 export const QuestionSchema = SchemaFactory.createForClass(Question);
+
+// 创建文本索引以优化搜索性能
+QuestionSchema.index({ title: 'text', content: 'text', tags: 'text' });

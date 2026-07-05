@@ -9,6 +9,10 @@ export interface QuestionQuery {
   mastery?: Mastery;
 }
 
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 @Injectable()
 export class QuestionsService {
   constructor(@InjectModel(Question.name) private model: Model<Question>) {}
@@ -18,10 +22,11 @@ export class QuestionsService {
     if (query.category) filter.categorySlug = query.category;
     if (query.mastery) filter.mastery = query.mastery;
     if (query.search) {
+      const escaped = escapeRegex(query.search);
       filter.$or = [
-        { title: { $regex: query.search, $options: 'i' } },
-        { content: { $regex: query.search, $options: 'i' } },
-        { tags: { $regex: query.search, $options: 'i' } },
+        { title: { $regex: escaped, $options: 'i' } },
+        { content: { $regex: escaped, $options: 'i' } },
+        { tags: { $regex: escaped, $options: 'i' } },
       ];
     }
     return this.model.find(filter).sort({ updatedAt: -1 }).lean();
