@@ -10,7 +10,10 @@ import type {
   Tag,
 } from '../types';
 
-const http = axios.create({ baseURL: '/api' });
+const http = axios.create({
+  baseURL: '/api',
+  timeout: 300000, // AI 作答可能超过 60s
+});
 
 export const api = {
   getDashboard: () => http.get<DashboardSummary>('/dashboard').then((r) => r.data),
@@ -60,7 +63,9 @@ export const api = {
   deleteQuestion: (id: string) => http.delete(`/questions/${id}`).then((r) => r.data),
 
   generateAiAnswer: (id: string, mode: 'standard' | 'deep' = 'standard') =>
-    http.post<{ aiAnswer: string }>(`/questions/${id}/ai-answer`, null, { params: { mode } }).then((r) => r.data),
+    http
+      .post<{ aiAnswer: string }>(`/questions/${id}/ai-answer`, {}, { params: { mode } })
+      .then((r) => r.data),
 
   getEvents: (params?: { from?: string; to?: string }) =>
     http.get<InterviewEvent[]>('/events', { params }).then((r) => r.data),
