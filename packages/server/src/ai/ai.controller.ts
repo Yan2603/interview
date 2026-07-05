@@ -7,12 +7,24 @@ export class AiController {
   constructor(private readonly service: AiService) {}
 
   @Get('questions/:id/ai-answer')
-  @Post('questions/:id/ai-answer')
-  @Throttle({ default: { limit: 10, ttl: 60000 } })  // 每分钟最多 10 次 AI 请求
-  generate(
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  generateViaGet(
     @Param('id') id: string,
     @Query('mode') mode?: 'standard' | 'deep',
   ) {
+    return this.generate(id, mode);
+  }
+
+  @Post('questions/:id/ai-answer')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  generateViaPost(
+    @Param('id') id: string,
+    @Query('mode') mode?: 'standard' | 'deep',
+  ) {
+    return this.generate(id, mode);
+  }
+
+  private generate(id: string, mode?: 'standard' | 'deep') {
     return this.service.generateAnswer(id, mode ?? 'standard');
   }
 }
