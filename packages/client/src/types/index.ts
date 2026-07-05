@@ -44,6 +44,13 @@ export interface InterviewEvent {
   updatedAt: string;
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface DashboardSummary {
   upcomingEvents: InterviewEvent[];
   mastery: Record<Mastery, number>;

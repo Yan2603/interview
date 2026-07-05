@@ -5,6 +5,7 @@ import type {
   InterviewEvent,
   InterviewType,
   Mastery,
+  PaginatedResponse,
   Question,
   Tag,
 } from '../types';
@@ -24,8 +25,14 @@ export const api = {
   updateCategory: (id: string, data: { name: string }) =>
     http.patch<Category>(`/categories/${id}`, data).then((r) => r.data),
 
-  getQuestions: (params?: { category?: string; search?: string; mastery?: Mastery }) =>
-    http.get<Question[]>('/questions', { params }).then((r) => r.data),
+  getQuestions: (params?: {
+    category?: string;
+    search?: string;
+    mastery?: Mastery;
+    page?: number;
+    pageSize?: number;
+  }) =>
+    http.get<PaginatedResponse<Question>>('/questions', { params }).then((r) => r.data),
 
   getTags: () => http.get<Tag[]>('/tags').then((r) => r.data),
 

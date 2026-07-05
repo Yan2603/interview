@@ -22,8 +22,16 @@ export class QuestionsController {
     @Query('category') category?: string,
     @Query('search') search?: string,
     @Query('mastery') mastery?: Mastery,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
-    return this.service.findAll({ category, search, mastery });
+    return this.service.findAll({
+      category,
+      search,
+      mastery,
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+    });
   }
 
   @Get(':id')

@@ -17,6 +17,14 @@ const { tags, loadTags, tagOptions, createTag, updateTag, deleteTag } = useTags(
 
 const loading = ref(false);
 const questions = ref<Question[]>([]);
+const tablePagination = ref({
+  current: 1,
+  pageSize: 20,
+  total: 0,
+  showSizeChanger: true,
+  showQuickJumper: true,
+  pageSizeOptions: ['10', '20', '50', '100'],
+});
 const search = ref('');
 const mastery = ref<Mastery | undefined>();
 const aiLoadingId = ref<string | null>(null);
@@ -24,6 +32,17 @@ const drawerOpen = ref(false);
 const drawerQuestion = ref<Question | null>(null);
 const aiPreviewOpen = ref(false);
 const aiPreviewQuestion = ref<Question | null>(null);
+
+function onTableChange(pag: { current?: number; pageSize?: number }) {
+  const pageSizeChanged = pag.pageSize !== undefined && pag.pageSize !== tablePagination.value.pageSize;
+  if (pag.pageSize !== undefined) tablePagination.value.pageSize = pag.pageSize;
+  if (pageSizeChanged) {
+    tablePagination.value.current = 1;
+  } else if (pag.current !== undefined) {
+    tablePagination.value.current = pag.current;
+  }
+  load();
+}
 
 const categoryFilter = computed(() => route.query.category as string | undefined);
 
@@ -52,11 +71,15 @@ function hasAiAnswer(record: Question) {
 async function load() {
   loading.value = true;
   try {
-    questions.value = await api.getQuestions({
+    const result = await api.getQuestions({
       category: categoryFilter.value,
       search: search.value || undefined,
       mastery: mastery.value,
+      page: tablePagination.value.current,
+      pageSize: tablePagination.value.pageSize,
     });
+    questions.value = result.items;
+    tablePagination.value.total = result.total;
   } finally {
     loading.value = false;
   }
@@ -71,9 +94,13 @@ onMounted(async () => {
   await load();
 });
 
-watch([() => route.query.category, mastery], load);
+watch([() => route.query.category, mastery], () => {
+  tablePagination.value.current = 1;
+  load();
+});
 
 async function onSearch() {
+  tablePagination.value.current = 1;
   debouncedSearch();
 }
 
@@ -277,6 +304,7 @@ async function removeTag(tag: Tag) {
       :loading="loading"
       :data-source="questions"
       :columns="[
+        { title: '序号', key: 'index', width: 64, align: 'center' },
         { title: '题目', dataIndex: 'title', key: 'title' },
         { title: '分类', dataIndex: 'categorySlug', key: 'categorySlug', width: 120 },
         { title: '掌握度', key: 'mastery', width: 100 },
@@ -285,11 +313,15 @@ async function removeTag(tag: Tag) {
         { title: '操作', key: 'actions', width: 80 },
       ]"
       row-key="_id"
-      :pagination="{ pageSize: 20 }"
+      :pagination="tablePagination"
+      @change="onTableChange"
       :custom-row="(record: Question) => ({ onClick: () => openDrawer(record), style: { cursor: 'pointer' } })"
     >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'title'">
+      <template #bodyCell="{ column, record, index }">
+        <template v-if="column.key === 'index'">
+          {{ (tablePagination.current - 1) * tablePagination.pageSize + index + 1 }}
+        </template>
+        <template v-else-if="column.key === 'title'">
           <a class="question-title-link" @click="openDetail(record._id, $event)">
             {{ record.title }}
           </a>

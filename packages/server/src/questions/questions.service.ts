@@ -7,6 +7,15 @@ export interface QuestionQuery {
   category?: string;
   search?: string;
   mastery?: Mastery;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedQuestions {
+  items: Question[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 function escapeRegex(str: string): string {
@@ -17,7 +26,7 @@ function escapeRegex(str: string): string {
 export class QuestionsService {
   constructor(@InjectModel(Question.name) private model: Model<Question>) {}
 
-  findAll(query: QuestionQuery) {
+  async findAll(query: QuestionQuery): Promise<PaginatedQuestions> {
     const filter: FilterQuery<Question> = {};
     if (query.category) filter.categorySlug = query.category;
     if (query.mastery) filter.mastery = query.mastery;
@@ -29,7 +38,17 @@ export class QuestionsService {
         { tags: { $regex: escaped, $options: 'i' } },
       ];
     }
-    return this.model.find(filter).sort({ updatedAt: -1 }).lean();
+
+    const page = Math.max(1, query.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, query.pageSize ?? 20));
+    const skip = (page - 1) * pageSize;
+
+    const [items, total] = await Promise.all([
+      this.model.find(filter).sort({ updatedAt: -1 }).skip(skip).limit(pageSize).lean(),
+      this.model.countDocuments(filter),
+    ]);
+
+    return { items, total, page, pageSize };
   }
 
   async findOne(id: string) {
