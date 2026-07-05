@@ -5,7 +5,7 @@ import { message } from 'ant-design-vue';
 import { api, MASTERY_LABELS } from '../api';
 import { useCategories } from '../composables/useCategories';
 import { useTags } from '../composables/useTags';
-import { renderMarkdown } from '../utils/markdown';
+import MarkdownContent from '../components/MarkdownContent.vue';
 import { getErrorMessage } from '../utils/error';
 import type { Mastery, Question } from '../types';
 
@@ -185,7 +185,7 @@ async function removeQuestion() {
         <a-tag v-for="tag in question.tags" :key="tag">{{ tag }}</a-tag>
 
         <a-card v-if="question.content" title="题目描述" style="margin-top: 16px">
-          <div class="markdown" v-html="renderMarkdown(question.content)" />
+          <MarkdownContent :content="question.content" />
         </a-card>
       </template>
 
@@ -205,7 +205,7 @@ async function removeQuestion() {
         </a-space>
         <a-spin :spinning="aiLoading">
           <a-empty v-if="!question.aiAnswer" description="点击上方按钮生成 AI 参考答案" />
-          <div v-else class="markdown" v-html="renderMarkdown(question.aiAnswer)" />
+          <MarkdownContent v-else :content="question.aiAnswer" />
         </a-spin>
       </a-card>
     </template>

@@ -5,7 +5,7 @@ import { message } from 'ant-design-vue';
 import axios from 'axios';
 import { api, MASTERY_LABELS } from '../api';
 import { useCategories } from '../composables/useCategories';
-import { renderMarkdown } from '../utils/markdown';
+import MarkdownContent from './MarkdownContent.vue';
 import type { Mastery, Question } from '../types';
 
 const props = defineProps<{
@@ -120,7 +120,7 @@ function goDetail() {
         <div class="drawer-body">
           <section v-if="question.content" class="block">
             <h4 class="block-title">题目描述</h4>
-            <div class="markdown" v-html="renderMarkdown(question.content)" />
+            <MarkdownContent :content="question.content" />
           </section>
 
           <section class="block">
@@ -138,7 +138,7 @@ function goDetail() {
           <section class="block">
             <h4 class="block-title">AI 参考答案</h4>
             <a-empty v-if="!question.aiAnswer?.trim()" description="暂无 AI 参考答案" />
-            <div v-else class="markdown" v-html="renderMarkdown(question.aiAnswer)" />
+            <MarkdownContent v-else :content="question.aiAnswer" />
           </section>
         </div>
       </div>

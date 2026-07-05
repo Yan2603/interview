@@ -6,7 +6,7 @@ import { api, MASTERY_COLORS, MASTERY_LABELS } from '../api';
 import { useCategories } from '../composables/useCategories';
 import { useTags } from '../composables/useTags';
 import QuestionPreviewDrawer from '../components/QuestionPreviewDrawer.vue';
-import { renderMarkdown } from '../utils/markdown';
+import MarkdownContent from '../components/MarkdownContent.vue';
 import { getErrorMessage, createDebouncedSearch } from '../utils/error';
 import type { Mastery, Question, Tag } from '../types';
 
@@ -343,10 +343,9 @@ async function removeTag(tag: Tag) {
       width="720px"
       :footer="null"
     >
-      <div
+      <MarkdownContent
         v-if="aiPreviewQuestion?.aiAnswer"
-        class="markdown"
-        v-html="renderMarkdown(aiPreviewQuestion.aiAnswer)"
+        :content="aiPreviewQuestion.aiAnswer"
       />
       <a-button
         v-if="aiPreviewQuestion"
