@@ -140,8 +140,8 @@ async function removeQuestion() {
             <a-select-option value="reviewing">{{ MASTERY_LABELS.reviewing }}</a-select-option>
             <a-select-option value="mastered">{{ MASTERY_LABELS.mastered }}</a-select-option>
           </a-select>
-          <a-popconfirm title="确定删除？" @confirm="removeQuestion">
-            <a-button danger>删除</a-button>
+          <a-popconfirm title="确定删除该题目？" @confirm="removeQuestion">
+            <a-button type="link" size="small" danger>删除</a-button>
           </a-popconfirm>
         </a-space>
       </div>

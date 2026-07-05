@@ -271,6 +271,16 @@ async function removeTag(tag: Tag) {
     message.error(getErrorMessage(err));
   }
 }
+
+async function removeQuestion(record: Question) {
+  try {
+    await api.deleteQuestion(record._id);
+    message.success('题目已删除');
+    await load();
+  } catch (err) {
+    message.error(getErrorMessage(err));
+  }
+}
 </script>
 
 <template>
@@ -310,7 +320,7 @@ async function removeTag(tag: Tag) {
         { title: '掌握度', key: 'mastery', width: 100 },
         { title: 'AI', key: 'ai', width: 180 },
         { title: '标签', key: 'tags', width: 180 },
-        { title: '操作', key: 'actions', width: 80 },
+        { title: '操作', key: 'actions', width: 120 },
       ]"
       row-key="_id"
       :pagination="tablePagination"
@@ -358,7 +368,12 @@ async function removeTag(tag: Tag) {
           <a-tag v-for="tag in record.tags" :key="tag">{{ tag }}</a-tag>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <a-button type="link" size="small" @click="openEditModal(record, $event)">编辑</a-button>
+          <a-space @click.stop>
+            <a-button type="link" size="small" @click="openEditModal(record, $event)">编辑</a-button>
+            <a-popconfirm title="确定删除该题目？" @confirm="removeQuestion(record)">
+              <a-button type="link" size="small" danger>删除</a-button>
+            </a-popconfirm>
+          </a-space>
         </template>
       </template>
     </a-table>
