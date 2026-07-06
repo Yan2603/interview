@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import dayjs, { Dayjs } from 'dayjs';
-import { api, INTERVIEW_TYPE_LABELS } from '../api';
+import { api, INTERVIEW_RESULT_LABELS, INTERVIEW_TYPE_LABELS } from '../api';
 import type { InterviewEvent, InterviewType } from '../types';
 
 const router = useRouter();
@@ -55,6 +55,9 @@ function eventTooltipLines(evt: InterviewEvent) {
     `${dayjs(evt.start).format('YYYY-MM-DD HH:mm')} · ${eventTypeLabel(evt.interviewType)}`,
   ];
   if (evt.location) lines.push(evt.location);
+  if (evt.status === 'completed' && evt.result && evt.result !== 'pending') {
+    lines.push(`结果：${INTERVIEW_RESULT_LABELS[evt.result]}`);
+  }
   return lines;
 }
 

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 import { message } from 'ant-design-vue';
-import { api, EVENT_STATUS_COLORS, EVENT_STATUS_LABELS, INTERVIEW_TYPE_LABELS } from '../api';
+import { api, EVENT_STATUS_COLORS, EVENT_STATUS_LABELS, INTERVIEW_RESULT_COLORS, INTERVIEW_RESULT_LABELS, INTERVIEW_TYPE_LABELS } from '../api';
 import RichTextEditor from '../components/RichTextEditor.vue';
-import type { EventStatus, InterviewEvent, InterviewType } from '../types';
+import type { EventStatus, InterviewEvent, InterviewResult, InterviewType } from '../types';
 
 const route = useRoute();
 const router = useRouter();
@@ -27,6 +27,7 @@ const form = ref({
   link: '',
   notes: '',
   status: 'scheduled' as EventStatus,
+  result: 'pending' as InterviewResult,
 });
 
 const isRemote = computed(() => form.value.interviewType === 'remote');
@@ -34,6 +35,15 @@ const isRemote = computed(() => form.value.interviewType === 'remote');
 const NOTES_PLACEHOLDER = '记录面试问题、感受、待补充的知识点...';
 
 const hasNotes = computed(() => notes.value.trim().length > 0);
+
+watch(
+  () => form.value.status,
+  (status) => {
+    if (status !== 'completed') {
+      form.value.result = 'pending';
+    }
+  },
+);
 
 const locationPlaceholder = computed(() =>
   isRemote.value ? '如：腾讯会议 / 飞书，或线上平台说明' : '如：北京市朝阳区 XX 大厦 3 楼',
@@ -50,6 +60,7 @@ function syncForm() {
     link: event.value.link,
     notes: event.value.notes,
     status: event.value.status,
+    result: event.value.result ?? 'pending',
   };
   notes.value = event.value.notes;
 }
@@ -100,6 +111,7 @@ async function save() {
       link: form.value.link,
       notes: form.value.notes,
       status: form.value.status,
+      result: form.value.result,
     });
     notes.value = event.value.notes;
     editing.value = false;
@@ -174,13 +186,27 @@ async function removeEvent() {
                 <a-radio value="onsite">{{ INTERVIEW_TYPE_LABELS.onsite }}</a-radio>
               </a-radio-group>
             </a-form-item>
-            <a-form-item label="状态">
-              <a-select v-model:value="form.status">
-                <a-select-option value="scheduled">{{ EVENT_STATUS_LABELS.scheduled }}</a-select-option>
-                <a-select-option value="completed">{{ EVENT_STATUS_LABELS.completed }}</a-select-option>
-                <a-select-option value="cancelled">{{ EVENT_STATUS_LABELS.cancelled }}</a-select-option>
-              </a-select>
-            </a-form-item>
+            <a-row :gutter="16">
+              <a-col :span="12">
+                <a-form-item label="面试状态">
+                  <a-select v-model:value="form.status">
+                    <a-select-option value="scheduled">{{ EVENT_STATUS_LABELS.scheduled }}</a-select-option>
+                    <a-select-option value="completed">{{ EVENT_STATUS_LABELS.completed }}</a-select-option>
+                    <a-select-option value="cancelled">{{ EVENT_STATUS_LABELS.cancelled }}</a-select-option>
+                  </a-select>
+                </a-form-item>
+              </a-col>
+              <a-col :span="12">
+                <a-form-item label="面试结果">
+                  <a-select v-model:value="form.result" :disabled="form.status !== 'completed'">
+                    <a-select-option value="pending">{{ INTERVIEW_RESULT_LABELS.pending }}</a-select-option>
+                    <a-select-option value="passed">{{ INTERVIEW_RESULT_LABELS.passed }}</a-select-option>
+                    <a-select-option value="failed">{{ INTERVIEW_RESULT_LABELS.failed }}</a-select-option>
+                    <a-select-option value="offer">{{ INTERVIEW_RESULT_LABELS.offer }}</a-select-option>
+                  </a-select>
+                </a-form-item>
+              </a-col>
+            </a-row>
             <a-form-item label="面试地点">
               <a-input v-model:value="form.location" :placeholder="locationPlaceholder" />
             </a-form-item>
@@ -210,6 +236,13 @@ async function removeEvent() {
           <a-tag :color="EVENT_STATUS_COLORS[event.status]" style="margin-left: 8px; vertical-align: middle">
             {{ EVENT_STATUS_LABELS[event.status] }}
           </a-tag>
+          <a-tag
+            v-if="event.status === 'completed'"
+            :color="INTERVIEW_RESULT_COLORS[event.result ?? 'pending']"
+            style="margin-left: 8px; vertical-align: middle"
+          >
+            {{ INTERVIEW_RESULT_LABELS[event.result ?? 'pending'] }}
+          </a-tag>
         </h2>
 
         <a-descriptions :column="1" bordered size="small" style="margin-top: 16px; max-width: 640px">
@@ -221,6 +254,11 @@ async function removeEvent() {
           </a-descriptions-item>
           <a-descriptions-item v-if="event.link" label="会议链接">
             <a :href="event.link" target="_blank" rel="noopener noreferrer">{{ event.link }}</a>
+          </a-descriptions-item>
+          <a-descriptions-item v-if="event.status === 'completed'" label="面试结果">
+            <a-tag :color="INTERVIEW_RESULT_COLORS[event.result ?? 'pending']">
+              {{ INTERVIEW_RESULT_LABELS[event.result ?? 'pending'] }}
+            </a-tag>
           </a-descriptions-item>
         </a-descriptions>
 

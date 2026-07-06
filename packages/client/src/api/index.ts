@@ -82,6 +82,7 @@ export const api = {
     location?: string;
     notes?: string;
     status?: InterviewEvent['status'];
+    result?: InterviewEvent['result'];
   }) => http.post<InterviewEvent>('/events', data).then((r) => r.data),
 
   updateEvent: (id: string, data: Partial<InterviewEvent>) =>
@@ -117,4 +118,18 @@ export const EVENT_STATUS_COLORS: Record<InterviewEvent['status'], string> = {
   scheduled: 'processing',
   completed: 'success',
   cancelled: 'default',
+};
+
+export const INTERVIEW_RESULT_LABELS: Record<InterviewEvent['result'], string> = {
+  pending: '待结果',
+  passed: '通过',
+  failed: '未通过',
+  offer: '拿到 offer',
+};
+
+export const INTERVIEW_RESULT_COLORS: Record<InterviewEvent['result'], string> = {
+  pending: 'default',
+  passed: 'success',
+  failed: 'error',
+  offer: 'gold',
 };

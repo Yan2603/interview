@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
 export type EventStatus = 'scheduled' | 'completed' | 'cancelled';
+export type InterviewResult = 'pending' | 'passed' | 'failed' | 'offer';
 export type InterviewType = 'remote' | 'onsite';
 
 export type InterviewEventDocument = HydratedDocument<InterviewEvent>;
@@ -34,6 +35,9 @@ export class InterviewEvent {
 
   @Prop({ enum: ['scheduled', 'completed', 'cancelled'], default: 'scheduled' })
   status!: EventStatus;
+
+  @Prop({ enum: ['pending', 'passed', 'failed', 'offer'], default: 'pending' })
+  result!: InterviewResult;
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Question' }], default: [] })
   relatedQuestionIds!: Types.ObjectId[];

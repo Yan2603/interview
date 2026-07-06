@@ -39,6 +39,7 @@ export class EventsService {
     location?: string;
     notes?: string;
     status?: InterviewEvent['status'];
+    result?: InterviewEvent['result'];
     relatedQuestionIds?: string[];
   }) {
     return this.model.create(sanitizeNotes(data));
