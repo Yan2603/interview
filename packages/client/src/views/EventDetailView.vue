@@ -3,14 +3,20 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 import { message } from 'ant-design-vue';
-import { api, INTERVIEW_TYPE_LABELS } from '../api';
+import { api, EVENT_STATUS_COLORS, EVENT_STATUS_LABELS, INTERVIEW_TYPE_LABELS } from '../api';
+import RichTextEditor from '../components/RichTextEditor.vue';
 import type { EventStatus, InterviewEvent, InterviewType } from '../types';
 
 const route = useRoute();
 const router = useRouter();
 const loading = ref(true);
 const saving = ref(false);
+const savingNotes = ref(false);
+const editing = ref(false);
+const editingNotes = ref(false);
 const event = ref<InterviewEvent | null>(null);
+const notes = ref('');
+const notesDraft = ref('');
 
 const form = ref({
   company: '',
@@ -25,30 +31,61 @@ const form = ref({
 
 const isRemote = computed(() => form.value.interviewType === 'remote');
 
+const NOTES_PLACEHOLDER = '记录面试问题、感受、待补充的知识点...';
+
+const hasNotes = computed(() => notes.value.trim().length > 0);
+
 const locationPlaceholder = computed(() =>
   isRemote.value ? '如：腾讯会议 / 飞书，或线上平台说明' : '如：北京市朝阳区 XX 大厦 3 楼',
 );
+
+function syncForm() {
+  if (!event.value) return;
+  form.value = {
+    company: event.value.company,
+    round: event.value.round,
+    start: dayjs(event.value.start),
+    interviewType: event.value.interviewType ?? 'remote',
+    location: event.value.location ?? '',
+    link: event.value.link,
+    notes: event.value.notes,
+    status: event.value.status,
+  };
+  notes.value = event.value.notes;
+}
 
 async function load() {
   loading.value = true;
   try {
     event.value = await api.getEvent(route.params.id as string);
-    form.value = {
-      company: event.value.company,
-      round: event.value.round,
-      start: dayjs(event.value.start),
-      interviewType: event.value.interviewType ?? 'remote',
-      location: event.value.location ?? '',
-      link: event.value.link,
-      notes: event.value.notes,
-      status: event.value.status,
-    };
+    syncForm();
   } finally {
     loading.value = false;
   }
 }
 
 onMounted(load);
+
+function startEdit() {
+  editingNotes.value = false;
+  syncForm();
+  editing.value = true;
+}
+
+function cancelEdit() {
+  editing.value = false;
+  syncForm();
+}
+
+function startEditNotes() {
+  notesDraft.value = notes.value;
+  editingNotes.value = true;
+}
+
+function cancelEditNotes() {
+  editingNotes.value = false;
+  notesDraft.value = notes.value;
+}
 
 async function save() {
   if (!event.value) return;
@@ -64,9 +101,25 @@ async function save() {
       notes: form.value.notes,
       status: form.value.status,
     });
+    notes.value = event.value.notes;
+    editing.value = false;
     message.success('已保存');
   } finally {
     saving.value = false;
+  }
+}
+
+async function saveNotes() {
+  if (!event.value) return;
+  savingNotes.value = true;
+  try {
+    event.value = await api.updateEvent(event.value._id, { notes: notesDraft.value });
+    notes.value = event.value.notes;
+    form.value.notes = event.value.notes;
+    editingNotes.value = false;
+    message.success('复盘已保存');
+  } finally {
+    savingNotes.value = false;
   }
 }
 
@@ -83,71 +136,117 @@ async function removeEvent() {
     <template v-if="event">
       <div class="toolbar">
         <a-button @click="router.push('/calendar')">返回日历</a-button>
-        <a-popconfirm title="确定删除？" @confirm="removeEvent">
-          <a-button danger>删除</a-button>
-        </a-popconfirm>
+        <a-space>
+          <a-button v-if="!editing" @click="startEdit">编辑</a-button>
+          <a-popconfirm title="确定删除？" @confirm="removeEvent">
+            <a-button danger>删除</a-button>
+          </a-popconfirm>
+        </a-space>
       </div>
 
-      <h2>
-        {{ form.company }} · {{ form.round }}
-        <a-tag :color="isRemote ? 'blue' : 'green'" style="margin-left: 8px; vertical-align: middle">
-          {{ INTERVIEW_TYPE_LABELS[form.interviewType] }}
-        </a-tag>
-      </h2>
-      <p style="color: #666">{{ dayjs(event.start).format('YYYY-MM-DD HH:mm') }}</p>
-      <p v-if="form.location" style="color: #666">地点：{{ form.location }}</p>
+      <template v-if="editing">
+        <h2>编辑面试</h2>
+        <a-card>
+          <a-form layout="vertical">
+            <a-row :gutter="16">
+              <a-col :span="12">
+                <a-form-item label="公司">
+                  <a-input v-model:value="form.company" />
+                </a-form-item>
+              </a-col>
+              <a-col :span="12">
+                <a-form-item label="轮次">
+                  <a-input v-model:value="form.round" />
+                </a-form-item>
+              </a-col>
+            </a-row>
+            <a-form-item label="时间">
+              <a-date-picker
+                v-model:value="form.start"
+                show-time
+                format="YYYY-MM-DD HH:mm"
+                style="width: 100%"
+              />
+            </a-form-item>
+            <a-form-item label="面试方式">
+              <a-radio-group v-model:value="form.interviewType">
+                <a-radio value="remote">{{ INTERVIEW_TYPE_LABELS.remote }}</a-radio>
+                <a-radio value="onsite">{{ INTERVIEW_TYPE_LABELS.onsite }}</a-radio>
+              </a-radio-group>
+            </a-form-item>
+            <a-form-item label="状态">
+              <a-select v-model:value="form.status">
+                <a-select-option value="scheduled">{{ EVENT_STATUS_LABELS.scheduled }}</a-select-option>
+                <a-select-option value="completed">{{ EVENT_STATUS_LABELS.completed }}</a-select-option>
+                <a-select-option value="cancelled">{{ EVENT_STATUS_LABELS.cancelled }}</a-select-option>
+              </a-select>
+            </a-form-item>
+            <a-form-item label="面试地点">
+              <a-input v-model:value="form.location" :placeholder="locationPlaceholder" />
+            </a-form-item>
+            <a-form-item v-if="isRemote" label="会议链接">
+              <a-input v-model:value="form.link" placeholder="腾讯会议 / 飞书链接" />
+            </a-form-item>
+            <a-form-item label="面后复盘">
+              <RichTextEditor
+                v-model="form.notes"
+                :placeholder="NOTES_PLACEHOLDER"
+              />
+            </a-form-item>
+            <a-space>
+              <a-button type="primary" :loading="saving" @click="save">保存</a-button>
+              <a-button @click="cancelEdit">取消</a-button>
+            </a-space>
+          </a-form>
+        </a-card>
+      </template>
 
-      <a-card>
-        <a-form layout="vertical">
-          <a-row :gutter="16">
-            <a-col :span="12">
-              <a-form-item label="公司">
-                <a-input v-model:value="form.company" />
-              </a-form-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-item label="轮次">
-                <a-input v-model:value="form.round" />
-              </a-form-item>
-            </a-col>
-          </a-row>
-          <a-form-item label="时间">
-            <a-date-picker
-              v-model:value="form.start"
-              show-time
-              format="YYYY-MM-DD HH:mm"
-              style="width: 100%"
+      <template v-else>
+        <h2>
+          {{ event.company }} · {{ event.round }}
+          <a-tag :color="event.interviewType === 'remote' ? 'blue' : 'green'" style="margin-left: 8px; vertical-align: middle">
+            {{ INTERVIEW_TYPE_LABELS[event.interviewType ?? 'remote'] }}
+          </a-tag>
+          <a-tag :color="EVENT_STATUS_COLORS[event.status]" style="margin-left: 8px; vertical-align: middle">
+            {{ EVENT_STATUS_LABELS[event.status] }}
+          </a-tag>
+        </h2>
+
+        <a-descriptions :column="1" bordered size="small" style="margin-top: 16px; max-width: 640px">
+          <a-descriptions-item label="时间">
+            {{ dayjs(event.start).format('YYYY-MM-DD HH:mm') }}
+          </a-descriptions-item>
+          <a-descriptions-item v-if="event.location" label="地点">
+            {{ event.location }}
+          </a-descriptions-item>
+          <a-descriptions-item v-if="event.link" label="会议链接">
+            <a :href="event.link" target="_blank" rel="noopener noreferrer">{{ event.link }}</a>
+          </a-descriptions-item>
+        </a-descriptions>
+
+        <a-card title="面后复盘" style="margin-top: 16px">
+          <template #extra>
+            <a-button v-if="!editingNotes" size="small" @click="startEditNotes">
+              {{ hasNotes ? '编辑复盘' : '写复盘' }}
+            </a-button>
+          </template>
+
+          <template v-if="editingNotes">
+            <RichTextEditor
+              v-model="notesDraft"
+              :placeholder="NOTES_PLACEHOLDER"
             />
-          </a-form-item>
-          <a-form-item label="面试方式">
-            <a-radio-group v-model:value="form.interviewType">
-              <a-radio value="remote">{{ INTERVIEW_TYPE_LABELS.remote }}</a-radio>
-              <a-radio value="onsite">{{ INTERVIEW_TYPE_LABELS.onsite }}</a-radio>
-            </a-radio-group>
-          </a-form-item>
-          <a-form-item label="状态">
-            <a-select v-model:value="form.status">
-              <a-select-option value="scheduled">待面试</a-select-option>
-              <a-select-option value="completed">已完成</a-select-option>
-              <a-select-option value="cancelled">已取消</a-select-option>
-            </a-select>
-          </a-form-item>
-          <a-form-item label="面试地点">
-            <a-input v-model:value="form.location" :placeholder="locationPlaceholder" />
-          </a-form-item>
-          <a-form-item v-if="isRemote" label="会议链接">
-            <a-input v-model:value="form.link" placeholder="腾讯会议 / 飞书链接" />
-          </a-form-item>
-          <a-form-item label="面后复盘">
-            <a-textarea
-              v-model:value="form.notes"
-              :rows="8"
-              placeholder="记录面试问题、感受、待补充的知识点..."
-            />
-          </a-form-item>
-          <a-button type="primary" :loading="saving" @click="save">保存</a-button>
-        </a-form>
-      </a-card>
+            <a-space style="margin-top: 12px">
+              <a-button type="primary" :loading="savingNotes" @click="saveNotes">保存</a-button>
+              <a-button @click="cancelEditNotes">取消</a-button>
+            </a-space>
+          </template>
+          <template v-else>
+            <a-empty v-if="!hasNotes" description="暂无复盘，点击右上角开始记录" />
+            <RichTextEditor v-else v-model="notes" readonly :min-height="120" />
+          </template>
+        </a-card>
+      </template>
     </template>
   </a-spin>
 </template>

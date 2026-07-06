@@ -1,7 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { sanitizeRichTextHtml } from '../common/sanitize-rich-text';
 import { InterviewEvent, InterviewType } from './event.schema';
+
+function sanitizeNotes(data: Record<string, unknown>) {
+  if (typeof data.notes !== 'string') return data;
+  return { ...data, notes: sanitizeRichTextHtml(data.notes) };
+}
 
 @Injectable()
 export class EventsService {
@@ -35,12 +41,12 @@ export class EventsService {
     status?: InterviewEvent['status'];
     relatedQuestionIds?: string[];
   }) {
-    return this.model.create(data);
+    return this.model.create(sanitizeNotes(data));
   }
 
   async update(id: string, data: Record<string, unknown>) {
     const doc = await this.model
-      .findByIdAndUpdate(id, { $set: data }, { new: true })
+      .findByIdAndUpdate(id, { $set: sanitizeNotes(data) }, { new: true })
       .lean();
     if (!doc) throw new NotFoundException('Event not found');
     return doc;

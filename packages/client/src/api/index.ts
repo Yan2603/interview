@@ -106,3 +106,15 @@ export const INTERVIEW_TYPE_LABELS: Record<InterviewType, string> = {
   remote: '远程',
   onsite: '线下',
 };
+
+export const EVENT_STATUS_LABELS: Record<InterviewEvent['status'], string> = {
+  scheduled: '待面试',
+  completed: '已完成',
+  cancelled: '已取消',
+};
+
+export const EVENT_STATUS_COLORS: Record<InterviewEvent['status'], string> = {
+  scheduled: 'processing',
+  completed: 'success',
+  cancelled: 'default',
+};

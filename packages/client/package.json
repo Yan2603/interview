@@ -12,6 +12,8 @@
   "dependencies": {
     "@types/dompurify": "^3.2.0",
     "@types/lodash-es": "^4.17.12",
+    "@wangeditor/editor": "^5.1.23",
+    "@wangeditor/editor-for-vue": "^5.1.12",
     "ant-design-vue": "^4.2.0",
     "axios": "^1.7.0",
     "dayjs": "^1.11.0",
