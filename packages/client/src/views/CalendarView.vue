@@ -49,13 +49,65 @@ function eventLabel(evt: InterviewEvent) {
   return `[${eventTypeLabel(evt.interviewType)}] ${evt.company} · ${evt.round}`;
 }
 
+function hasResult(evt: InterviewEvent) {
+  return evt.status === 'completed' && !!evt.result && evt.result !== 'pending';
+}
+
+function dayEvents(date: Dayjs) {
+  return eventsByDate.value[date.format('YYYY-MM-DD')] ?? [];
+}
+
+type CellTone = 'passed' | 'failed' | 'offer' | 'scheduled';
+
+function cellTone(date: Dayjs): CellTone | null {
+  const evts = dayEvents(date);
+  if (!evts.length) return null;
+
+  let tone: CellTone = 'scheduled';
+  for (const evt of evts) {
+    if (!hasResult(evt)) continue;
+    if (evt.result === 'offer') return 'offer';
+    if (evt.result === 'passed') tone = 'passed';
+    else if (evt.result === 'failed' && tone !== 'passed') tone = 'failed';
+  }
+  return tone;
+}
+
+function cellClasses(date: Dayjs) {
+  const classes: string[] = [];
+  const evts = dayEvents(date);
+  if (!date.isSame(selectedDate.value, 'month')) classes.push('other-month');
+  if (date.isSame(dayjs(), 'day')) classes.push('today');
+  // 无事件的日期（含今天）不做整格选中高亮，避免空格子边框过重
+  if (date.isSame(selectedDate.value, 'day') && evts.length > 0) classes.push('selected');
+  const tone = cellTone(date);
+  if (tone) classes.push(`cell-${tone}`);
+  return classes;
+}
+
+function cellResultLabel(date: Dayjs) {
+  const labels: Record<CellTone, string> = {
+    passed: '通过',
+    failed: '未通过',
+    offer: 'Offer',
+    scheduled: '',
+  };
+  const tone = cellTone(date);
+  return tone && tone !== 'scheduled' ? labels[tone] : '';
+}
+
+function eventDotClass(evt: InterviewEvent) {
+  if (hasResult(evt)) return `dot-${evt.result}`;
+  return evt.interviewType === 'onsite' ? 'onsite' : 'remote';
+}
+
 function eventTooltipLines(evt: InterviewEvent) {
   const lines = [
     `${evt.company} · ${evt.round}`,
     `${dayjs(evt.start).format('YYYY-MM-DD HH:mm')} · ${eventTypeLabel(evt.interviewType)}`,
   ];
   if (evt.location) lines.push(evt.location);
-  if (evt.status === 'completed' && evt.result && evt.result !== 'pending') {
+  if (hasResult(evt)) {
     lines.push(`结果：${INTERVIEW_RESULT_LABELS[evt.result]}`);
   }
   return lines;
@@ -127,20 +179,28 @@ function goDetail(id: string) {
 
     <a-spin :spinning="loading">
       <a-calendar v-model:value="selectedDate" @panelChange="onPanelChange">
-        <template #dateCellRender="{ current }">
-          <ul class="events">
-            <li v-for="evt in eventsByDate[current.format('YYYY-MM-DD')] ?? []" :key="evt._id">
-              <a-tooltip placement="topLeft" :mouse-enter-delay="0.3">
-                <template #title>
-                  <div v-for="(line, i) in eventTooltipLines(evt)" :key="i">{{ line }}</div>
-                </template>
-                <a class="event-link" @click.stop="goDetail(evt._id)">
-                  <span class="event-dot" :class="evt.interviewType === 'onsite' ? 'onsite' : 'remote'" />
-                  {{ eventLabel(evt) }}
-                </a>
-              </a-tooltip>
-            </li>
-          </ul>
+        <template #dateFullCellRender="{ current }">
+          <div class="calendar-cell" :class="cellClasses(current)">
+            <div class="cell-header">
+              <span v-if="cellResultLabel(current)" class="cell-result">{{ cellResultLabel(current) }}</span>
+              <span class="cell-date" :class="{ 'is-today': current.isSame(dayjs(), 'day') }">
+                {{ current.date() }}
+              </span>
+            </div>
+            <ul v-if="dayEvents(current).length" class="events">
+              <li v-for="evt in dayEvents(current)" :key="evt._id">
+                <a-tooltip placement="topLeft" :mouse-enter-delay="0.3">
+                  <template #title>
+                    <div v-for="(line, i) in eventTooltipLines(evt)" :key="i">{{ line }}</div>
+                  </template>
+                  <a class="event-link" @click.stop="goDetail(evt._id)">
+                    <span class="event-dot" :class="eventDotClass(evt)" />
+                    <span class="event-text">{{ eventLabel(evt) }}</span>
+                  </a>
+                </a-tooltip>
+              </li>
+            </ul>
+          </div>
         </template>
       </a-calendar>
     </a-spin>
@@ -189,38 +249,168 @@ function goDetail(id: string) {
   margin-bottom: 16px;
 }
 
+.calendar-cell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 88px;
+  padding: 6px 8px;
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.calendar-cell.cell-passed {
+  background: #f6ffed;
+  border-color: #95de64;
+}
+
+.calendar-cell.cell-failed {
+  background: #fff2f0;
+  border-color: #ffa39e;
+}
+
+.calendar-cell.cell-offer {
+  background: #fffbe6;
+  border-color: #ffd666;
+}
+
+.calendar-cell.cell-scheduled {
+  background: #e6f4ff;
+  border-color: #91caff;
+}
+
+.calendar-cell.other-month {
+  opacity: 0.45;
+}
+
+.calendar-cell.selected {
+  box-shadow: inset 0 0 0 1px #1677ff;
+}
+
+.calendar-cell.cell-passed.selected {
+  border-color: #52c41a;
+  box-shadow: inset 0 0 0 1px #52c41a;
+}
+
+.calendar-cell.cell-failed.selected {
+  border-color: #ff4d4f;
+  box-shadow: inset 0 0 0 1px #ff4d4f;
+}
+
+.calendar-cell.cell-offer.selected {
+  border-color: #faad14;
+  box-shadow: inset 0 0 0 1px #faad14;
+}
+
+.calendar-cell.cell-scheduled.selected {
+  border-color: #1677ff;
+  box-shadow: inset 0 0 0 1px #1677ff;
+}
+
+.calendar-cell:hover {
+  filter: brightness(0.98);
+}
+
+.cell-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.cell-date {
+  margin-left: auto;
+  font-size: 14px;
+  line-height: 22px;
+  min-width: 24px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.cell-date.is-today {
+  background: #1677ff;
+  color: #fff;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.cell-result {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.calendar-cell.cell-passed .cell-result {
+  background: #52c41a;
+  color: #fff;
+}
+
+.calendar-cell.cell-failed .cell-result {
+  background: #ff4d4f;
+  color: #fff;
+}
+
+.calendar-cell.cell-offer .cell-result {
+  background: #faad14;
+  color: #fff;
+}
+
 .events {
   list-style: none;
   margin: 0;
   padding: 0;
+  width: 100%;
   font-size: 12px;
+  overflow: hidden;
+  flex: 1;
 }
 
 .events li {
   margin-top: 2px;
+  overflow: hidden;
+}
+
+.events li :deep(.ant-tooltip) {
+  display: block;
+  width: 100%;
 }
 
 .event-link {
-  display: block;
-  color: #1677ff;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  color: rgba(0, 0, 0, 0.75);
   cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   line-height: 1.5;
+  padding: 1px 0;
+  overflow: hidden;
 }
 
 .event-link:hover {
-  color: #4096ff;
+  color: #1677ff;
+}
+
+.event-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .event-dot {
-  display: inline-block;
+  flex-shrink: 0;
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  margin-right: 4px;
-  vertical-align: middle;
 }
 
 .event-dot.remote {
@@ -231,16 +421,54 @@ function goDetail(id: string) {
   background: #52c41a;
 }
 
-/* 悬停时仅轻微高亮，避免整块蓝色 + 原生日期 tooltip */
-:deep(.ant-picker-calendar-full .ant-picker-cell:hover .ant-picker-calendar-date) {
-  background: #fafafa;
+.event-dot.dot-passed {
+  background: #389e0d;
 }
 
-:deep(.ant-picker-calendar-full .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-calendar-date) {
-  background: #e6f4ff;
+.event-dot.dot-failed {
+  background: #cf1322;
 }
 
-:deep(.ant-picker-calendar-full .ant-picker-cell-in-view.ant-picker-cell-selected:hover .ant-picker-calendar-date) {
-  background: #bae0ff;
+.event-dot.dot-offer {
+  background: #d48806;
+}
+
+:deep(.ant-picker-calendar-full .ant-picker-panel .ant-picker-body) {
+  padding: 8px 0 0;
+}
+
+:deep(.ant-picker-calendar-full .ant-picker-cell) {
+  padding: 2px 0;
+  vertical-align: top;
+}
+
+:deep(.ant-picker-calendar-full .ant-picker-cell-inner) {
+  padding: 0 2px;
+  height: 100%;
+}
+
+:deep(.ant-picker-calendar-full .ant-picker-cell-selected .ant-picker-cell-inner) {
+  background: transparent;
+}
+
+:deep(.ant-picker-calendar-full .ant-picker-cell-selected .calendar-cell) {
+  border-color: #f0f0f0;
+  box-shadow: none;
+}
+
+:deep(.ant-picker-calendar-full .ant-picker-cell-selected .calendar-cell.cell-passed) {
+  border-color: #95de64;
+}
+
+:deep(.ant-picker-calendar-full .ant-picker-cell-selected .calendar-cell.cell-failed) {
+  border-color: #ffa39e;
+}
+
+:deep(.ant-picker-calendar-full .ant-picker-cell-selected .calendar-cell.cell-offer) {
+  border-color: #ffd666;
+}
+
+:deep(.ant-picker-calendar-full .ant-picker-cell-selected .calendar-cell.cell-scheduled) {
+  border-color: #91caff;
 }
 </style>
