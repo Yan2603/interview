@@ -68,6 +68,7 @@ function readImageNaturalWidth(file: File): Promise<number> {
 function insertUploadedImage(url: string, alt: string, widthPx: number) {
   const editor = editorRef.value;
   if (!editor) return;
+  // wangEditor 运行时接受 slate image 节点；类型声明误用了 DOM Node
   editor.insertNode({
     type: 'image',
     src: url,
@@ -75,7 +76,7 @@ function insertUploadedImage(url: string, alt: string, widthPx: number) {
     href: url,
     style: { width: `${widthPx}px` },
     children: [{ text: '' }],
-  });
+  } as unknown as Parameters<IDomEditor['insertNode']>[0]);
 }
 
 const editorConfig = computed<Partial<IEditorConfig>>(() => ({
