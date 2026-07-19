@@ -4,6 +4,6 @@ packages:
 allowBuilds:
   '@nestjs/core': true
   core-js: true
-  es5-ext: set this to true or false
+  es5-ext: true
   esbuild: true
   vue-demi: true

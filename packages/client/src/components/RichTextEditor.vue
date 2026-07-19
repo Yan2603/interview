@@ -3,7 +3,10 @@ import '@wangeditor/editor/dist/css/style.css';
 import { computed, onBeforeUnmount, shallowRef, watch } from 'vue';
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue';
 import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor';
+import { message } from 'ant-design-vue';
 
+import { api } from '../api';
+import { getErrorMessage } from '../utils/error';
 import { sanitizeRichTextHtml } from '../utils/sanitize-rich-text';
 
 function normalizeHtml(value: string) {
@@ -34,9 +37,11 @@ const emit = defineEmits<{
 const editorRef = shallowRef<IDomEditor>();
 const html = shallowRef(sanitizeRichTextHtml(props.modelValue));
 
+/** 粘贴/上传后的最大默认宽度（可在编辑器内拖拽调整） */
+const MAX_DEFAULT_IMAGE_WIDTH = 480;
+
 const toolbarConfig: Partial<IToolbarConfig> = {
   excludeKeys: [
-    'group-image',
     'group-video',
     'insertTable',
     'codeBlock',
@@ -44,9 +49,64 @@ const toolbarConfig: Partial<IToolbarConfig> = {
   ],
 };
 
+function readImageNaturalWidth(file: File): Promise<number> {
+  return new Promise((resolve) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(img.naturalWidth || MAX_DEFAULT_IMAGE_WIDTH);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(MAX_DEFAULT_IMAGE_WIDTH);
+    };
+    img.src = objectUrl;
+  });
+}
+
+function insertUploadedImage(url: string, alt: string, widthPx: number) {
+  const editor = editorRef.value;
+  if (!editor) return;
+  editor.insertNode({
+    type: 'image',
+    src: url,
+    alt,
+    href: url,
+    style: { width: `${widthPx}px` },
+    children: [{ text: '' }],
+  });
+}
+
 const editorConfig = computed<Partial<IEditorConfig>>(() => ({
   placeholder: props.readonly ? '' : props.placeholder,
   readOnly: props.readonly,
+  MENU_CONF: {
+    uploadImage: {
+      // 禁止粘贴时内嵌 base64，统一走上传
+      base64LimitSize: 0,
+      customUpload: async (
+        file: File,
+        insertFn: (url: string, alt: string, href: string) => void,
+      ) => {
+        try {
+          const [{ url }, naturalWidth] = await Promise.all([
+            api.uploadImage(file),
+            readImageNaturalWidth(file),
+          ]);
+          const alt = file.name || 'image';
+          const widthPx = Math.min(naturalWidth, MAX_DEFAULT_IMAGE_WIDTH);
+          if (editorRef.value) {
+            insertUploadedImage(url, alt, widthPx);
+          } else {
+            insertFn(url, alt, url);
+          }
+        } catch (err) {
+          message.error(getErrorMessage(err));
+        }
+      },
+    },
+  },
 }));
 
 const editorStyle = computed(() => ({
@@ -136,6 +196,12 @@ onBeforeUnmount(() => {
 
 .editor :deep(.w-e-scroll) {
   overflow-y: auto !important;
+}
+
+.editor :deep(img) {
+  max-width: min(100%, 480px);
+  height: auto;
+  vertical-align: middle;
 }
 
 .rich-text-editor.readonly {

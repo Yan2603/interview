@@ -1,7 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
+import { sanitizeRichTextHtml } from '../common/sanitize-rich-text';
 import { Mastery, Question } from './question.schema';
+
+function sanitizeMyNotes(data: Partial<Question>): Partial<Question> {
+  if (typeof data.myNotes !== 'string') return data;
+  return { ...data, myNotes: sanitizeRichTextHtml(data.myNotes) };
+}
 
 export interface QuestionQuery {
   category?: string;
@@ -58,12 +64,12 @@ export class QuestionsService {
   }
 
   create(data: Partial<Question>) {
-    return this.model.create(data);
+    return this.model.create(sanitizeMyNotes(data));
   }
 
   async update(id: string, data: Partial<Question>) {
     const doc = await this.model
-      .findByIdAndUpdate(id, { $set: data }, { new: true })
+      .findByIdAndUpdate(id, { $set: sanitizeMyNotes(data) }, { new: true })
       .lean();
     if (!doc) throw new NotFoundException('Question not found');
     return doc;

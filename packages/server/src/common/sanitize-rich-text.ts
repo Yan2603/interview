@@ -1,5 +1,11 @@
 import sanitizeHtml from 'sanitize-html';
 
+function isAllowedUploadSrc(src: string | undefined): boolean {
+  if (!src) return false;
+  // 仅允许同源上传路径，禁止 data: / 外链
+  return src.startsWith('/uploads/') && !src.includes('..');
+}
+
 const OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: [
     'p', 'br', 'div',
@@ -8,9 +14,11 @@ const OPTIONS: sanitizeHtml.IOptions = {
     'ul', 'ol', 'li',
     'blockquote',
     'a', 'code', 'pre',
+    'img',
   ],
   allowedAttributes: {
     a: ['href', 'target', 'rel', 'title'],
+    img: ['src', 'alt', 'width', 'height', 'style'],
     span: ['style'],
     p: ['style'],
     div: ['style'],
@@ -36,6 +44,26 @@ const OPTIONS: sanitizeHtml.IOptions = {
       'font-weight': [/^bold$/, /^normal$/, /^\d+$/],
       'font-style': [/^italic$/, /^normal$/],
       'text-decoration': [/^underline$/, /^line-through$/, /^none$/],
+    },
+    img: {
+      width: [/^\d+(?:\.\d+)?(?:px|%)?$/i, /^auto$/i],
+      height: [/^\d+(?:\.\d+)?(?:px|%)?$/i, /^auto$/i],
+      'max-width': [/^\d+(?:\.\d+)?(?:px|%)?$/i],
+    },
+  },
+  transformTags: {
+    img: (_tagName, attribs) => {
+      if (!isAllowedUploadSrc(attribs.src)) {
+        return { tagName: 'span', text: '', attribs: {} };
+      }
+      const next: Record<string, string> = {
+        src: attribs.src,
+        alt: attribs.alt ?? '',
+      };
+      if (attribs.width) next.width = attribs.width;
+      if (attribs.height) next.height = attribs.height;
+      if (attribs.style) next.style = attribs.style;
+      return { tagName: 'img', attribs: next };
     },
   },
 };

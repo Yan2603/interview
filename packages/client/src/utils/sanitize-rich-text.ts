@@ -7,9 +7,22 @@ const ALLOWED_TAGS = [
   'ul', 'ol', 'li',
   'blockquote',
   'a', 'code', 'pre',
+  'img',
 ];
 
-const ALLOWED_ATTR = ['href', 'target', 'rel', 'title', 'style'];
+const ALLOWED_ATTR = ['href', 'target', 'rel', 'title', 'style', 'src', 'alt', 'width', 'height'];
+
+function isAllowedUploadSrc(src: string): boolean {
+  return src.startsWith('/uploads/') && !src.includes('..');
+}
+
+DOMPurify.addHook('uponSanitizeAttribute', (node, data) => {
+  if (node.nodeName === 'IMG' && data.attrName === 'src') {
+    if (!isAllowedUploadSrc(data.attrValue)) {
+      data.keepAttr = false;
+    }
+  }
+});
 
 /** 过滤富文本 HTML，用于 wangEditor 内容的存取 */
 export function sanitizeRichTextHtml(html: string): string {

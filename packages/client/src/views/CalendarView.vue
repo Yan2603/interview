@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import dayjs, { Dayjs } from 'dayjs';
 import { api, INTERVIEW_RESULT_LABELS, INTERVIEW_TYPE_LABELS } from '../api';
+import RichTextEditor from '../components/RichTextEditor.vue';
 import type { InterviewEvent, InterviewType } from '../types';
 
 const router = useRouter();
@@ -234,7 +235,11 @@ function goDetail(id: string) {
           <a-input v-model:value="form.link" placeholder="腾讯会议 / 飞书链接" />
         </a-form-item>
         <a-form-item label="备注">
-          <a-textarea v-model:value="form.notes" :rows="3" />
+          <RichTextEditor
+            v-model="form.notes"
+            :min-height="140"
+            placeholder="可选备注，支持粘贴或上传图片..."
+          />
         </a-form-item>
       </a-form>
     </a-modal>

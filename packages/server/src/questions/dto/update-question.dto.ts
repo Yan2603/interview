@@ -18,7 +18,7 @@ export class UpdateQuestionDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(10000, { message: '笔记不能超过 10000 字符' })
+  @MaxLength(50000, { message: '笔记不能超过 50000 字符' })
   myNotes?: string;
 
   @IsString()

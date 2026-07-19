@@ -8,3 +8,7 @@ packages/server/public
 # 日志目录
 logs/
 
+# 用户上传图片（保留目录占位）
+uploads/*
+!uploads/.gitkeep
+

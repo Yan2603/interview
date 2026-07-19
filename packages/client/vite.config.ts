@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
@@ -8,6 +8,10 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': { target: 'http://localhost:3000', changeOrigin: true },
+      '/uploads': { target: 'http://localhost:3000', changeOrigin: true },
     },
+  },
+  test: {
+    environment: 'node',
   },
 });

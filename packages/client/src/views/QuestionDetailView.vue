@@ -6,6 +6,7 @@ import { api, MASTERY_LABELS } from '../api';
 import { useCategories } from '../composables/useCategories';
 import { useTags } from '../composables/useTags';
 import MarkdownContent from '../components/MarkdownContent.vue';
+import RichTextEditor from '../components/RichTextEditor.vue';
 import { getErrorMessage } from '../utils/error';
 import type { Mastery, Question } from '../types';
 
@@ -190,7 +191,11 @@ async function removeQuestion() {
       </template>
 
       <a-card title="我的笔记" style="margin-top: 16px">
-        <a-textarea v-model:value="myNotes" :rows="6" placeholder="记录你的思路与答案要点..." />
+        <RichTextEditor
+          v-model="myNotes"
+          :min-height="200"
+          placeholder="记录你的思路与答案要点，支持粘贴或上传图片..."
+        />
         <a-button type="primary" style="margin-top: 12px" :loading="saving" @click="saveNotes">
           保存笔记
         </a-button>

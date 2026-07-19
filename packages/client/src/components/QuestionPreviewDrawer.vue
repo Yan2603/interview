@@ -6,6 +6,7 @@ import axios from 'axios';
 import { api, MASTERY_LABELS } from '../api';
 import { useCategories } from '../composables/useCategories';
 import MarkdownContent from './MarkdownContent.vue';
+import RichTextEditor from './RichTextEditor.vue';
 import type { Mastery, Question } from '../types';
 
 const props = defineProps<{
@@ -125,12 +126,12 @@ function goDetail() {
 
           <section class="block">
             <h4 class="block-title">我的笔记</h4>
-            <a-textarea
-              v-model:value="notes"
-              :rows="4"
-              placeholder="记录你的思路与答案要点..."
+            <RichTextEditor
+              v-model="notes"
+              :min-height="160"
+              placeholder="记录你的思路与答案要点，支持粘贴或上传图片..."
             />
-            <a-button type="primary" size="small" :loading="saving" @click="save">
+            <a-button type="primary" size="small" :loading="saving" @click="save" style="margin-top: 8px">
               保存笔记
             </a-button>
           </section>

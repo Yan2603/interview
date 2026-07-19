@@ -15,6 +15,8 @@ import { AiModule } from './ai/ai.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { SeedModule } from './seed/seed.module';
 import { HealthModule } from './health/health.module';
+import { UploadsModule } from './uploads/uploads.module';
+import { resolveUploadRoot } from './uploads/upload-path';
 import { winstonConfig } from './config/winston.config';
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -52,11 +54,25 @@ const rootEnvPath = join(__dirname, '..', '..', '..', '.env');
       ttl: 60000,    // 60 秒
       limit: 100,    // 最多 100 次请求
     }]),
+    ServeStaticModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (config: ConfigService) => [
+        {
+          rootPath: resolveUploadRoot(config.get<string>('UPLOAD_DIR')),
+          serveRoot: '/uploads',
+          serveStaticOptions: {
+            index: false,
+            fallthrough: false,
+          },
+        },
+      ],
+      inject: [ConfigService],
+    }),
     ...(isProd
       ? [
           ServeStaticModule.forRoot({
             rootPath: join(__dirname, '..', 'public'),
-            exclude: ['/api*'],
+            exclude: ['/api*', '/uploads*'],
             renderPath: '{*path}',
           }),
         ]
@@ -69,6 +85,7 @@ const rootEnvPath = join(__dirname, '..', '..', '..', '.env');
     AiModule,
     DashboardModule,
     SeedModule,
+    UploadsModule,
   ],
   providers: [
     {

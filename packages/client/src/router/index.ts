@@ -6,6 +6,11 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
+      path: '/login',
+      component: () => import('../views/LoginView.vue'),
+      meta: { title: '登录' },
+    },
+    {
       path: '/',
       component: () => import('../views/DashboardView.vue'),
       meta: { title: '概览' },

@@ -89,6 +89,20 @@ export const api = {
     http.patch<InterviewEvent>(`/events/${id}`, data).then((r) => r.data),
 
   deleteEvent: (id: string) => http.delete(`/events/${id}`).then((r) => r.data),
+
+  uploadImage: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return http
+      .post<{ url: string }>('/uploads', form, {
+        timeout: 60000,
+      })
+      .then((r) => r.data);
+  },
+
+  // TODO: 后续鉴权提案实现真实接口 POST /api/auth/sms/send，此处仅 mock 成功
+  sendSmsCode: (_phone: string, _dialCode: string): Promise<void> =>
+    new Promise((resolve) => setTimeout(resolve, 500)),
 };
 
 export const MASTERY_LABELS: Record<Mastery, string> = {

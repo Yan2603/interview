@@ -22,9 +22,12 @@ services:
       MONGODB_URI: mongodb://mongo:27017/interview
       PORT: 3000
       NODE_ENV: production
+      UPLOAD_DIR: /app/uploads
       AI_API_KEY: ${AI_API_KEY}
       AI_BASE_URL: ${AI_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
       AI_MODEL: ${AI_MODEL:-qwen-max}
+    volumes:
+      - uploads-data:/app/uploads
     expose:
       - "3000"
     depends_on:
@@ -48,6 +51,7 @@ services:
 
 volumes:
   mongo-data:
+  uploads-data:
 
 networks:
   interview-net:
