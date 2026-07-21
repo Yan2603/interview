@@ -46,8 +46,16 @@ function eventTypeLabel(type?: InterviewType) {
   return INTERVIEW_TYPE_LABELS[type ?? 'remote'];
 }
 
-function eventLabel(evt: InterviewEvent) {
-  return `[${eventTypeLabel(evt.interviewType)}] ${evt.company} · ${evt.round}`;
+/** 按公司名生成稳定色相，几十家也能区分，无需固定色板 */
+function companyTagColor(company: string) {
+  const name = company.trim();
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  const hue = hash % 360;
+  // 饱和度/明度固定，保证标签可读；色相随公司变化
+  return `hsl(${hue} 62% 42%)`;
 }
 
 function hasResult(evt: InterviewEvent) {
@@ -196,7 +204,9 @@ function goDetail(id: string) {
                   </template>
                   <a class="event-link" @click.stop="goDetail(evt._id)">
                     <span class="event-dot" :class="eventDotClass(evt)" />
-                    <span class="event-text">{{ eventLabel(evt) }}</span>
+                    <span class="event-type">[{{ eventTypeLabel(evt.interviewType) }}]</span>
+                    <a-tag class="company-tag" :color="companyTagColor(evt.company)">{{ evt.company }}</a-tag>
+                    <span class="event-round">{{ evt.round }}</span>
                   </a>
                 </a-tooltip>
               </li>
@@ -403,7 +413,22 @@ function goDetail(id: string) {
   color: #1677ff;
 }
 
-.event-text {
+.event-type {
+  flex-shrink: 0;
+}
+
+.company-tag {
+  flex-shrink: 0;
+  margin: 0;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  line-height: 18px;
+  padding-inline: 4px;
+}
+
+.event-round {
   flex: 1;
   min-width: 0;
   white-space: nowrap;
