@@ -46,16 +46,43 @@ function eventTypeLabel(type?: InterviewType) {
   return INTERVIEW_TYPE_LABELS[type ?? 'remote'];
 }
 
-/** 按公司名生成稳定色相，几十家也能区分，无需固定色板 */
-function companyTagColor(company: string) {
-  const name = company.trim();
-  let hash = 0;
+/** 高对比色板：浅底 + 彩色边框 + 深字（边框不用近黑色，避免看成黑框） */
+const COMPANY_TAG_PALETTE = [
+  { bg: '#bae0ff', border: '#1677ff', text: '#0958d9' }, // 蓝
+  { bg: '#b7eb8f', border: '#52c41a', text: '#389e0d' }, // 绿
+  { bg: '#ffd591', border: '#fa8c16', text: '#d46b08' }, // 橙
+  { bg: '#ffa39e', border: '#ff4d4f', text: '#cf1322' }, // 红
+  { bg: '#d3adf7', border: '#722ed1', text: '#531dab' }, // 紫
+  { bg: '#87e8de', border: '#13c2c2', text: '#08979c' }, // 青
+  { bg: '#ffe58f', border: '#faad14', text: '#d48806' }, // 金
+  { bg: '#ffadd2', border: '#eb2f96', text: '#c41d7f' }, // 粉
+  { bg: '#eaff8f', border: '#a0d911', text: '#7cb305' }, // 黄绿
+  { bg: '#adc6ff', border: '#2f54eb', text: '#1d39c4' }, // 靛蓝
+  { bg: '#ffbb96', border: '#fa541c', text: '#d4380d' }, // 橘红
+  { bg: '#b5f5ec', border: '#36cfc9', text: '#08979c' }, // 薄荷绿
+  { bg: '#ffd6e7', border: '#f759ab', text: '#c41d7f' }, // 玫红
+  { bg: '#d9f7be', border: '#73d13d', text: '#389e0d' }, // 叶绿
+  { bg: '#efdbff', border: '#9254de', text: '#531dab' }, // 浅紫
+  { bg: '#ffccc7', border: '#ff7875', text: '#cf1322' }, // 浅红
+] as const;
+
+function hashCompany(name: string) {
+  let hash = 2166136261;
   for (let i = 0; i < name.length; i++) {
-    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+    hash ^= name.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
   }
-  const hue = hash % 360;
-  // 饱和度/明度固定，保证标签可读；色相随公司变化
-  return `hsl(${hue} 62% 42%)`;
+  // 黄金角打散，减少相近公司名撞到邻近色
+  return (Math.imul(hash ^ (hash >>> 16), 2654435761) >>> 0);
+}
+
+function companyTagStyle(company: string) {
+  const color = COMPANY_TAG_PALETTE[hashCompany(company.trim()) % COMPANY_TAG_PALETTE.length]!;
+  return {
+    backgroundColor: color.bg,
+    color: color.text,
+    border: `1px solid ${color.border}`,
+  };
 }
 
 function hasResult(evt: InterviewEvent) {
@@ -205,7 +232,7 @@ function goDetail(id: string) {
                   <a class="event-link" @click.stop="goDetail(evt._id)">
                     <span class="event-dot" :class="eventDotClass(evt)" />
                     <span class="event-type">[{{ eventTypeLabel(evt.interviewType) }}]</span>
-                    <a-tag class="company-tag" :color="companyTagColor(evt.company)">{{ evt.company }}</a-tag>
+                    <span class="company-tag" :style="companyTagStyle(evt.company)">{{ evt.company }}</span>
                     <span class="event-round">{{ evt.round }}</span>
                   </a>
                 </a-tooltip>
@@ -419,13 +446,18 @@ function goDetail(id: string) {
 
 .company-tag {
   flex-shrink: 0;
-  margin: 0;
+  display: inline-block;
   max-width: 72px;
+  margin: 0;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 11px;
-  line-height: 18px;
-  padding-inline: 4px;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .event-round {
