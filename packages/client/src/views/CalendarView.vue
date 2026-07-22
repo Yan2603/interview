@@ -2,18 +2,23 @@
 import { computed, nextTick, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import dayjs, { Dayjs } from 'dayjs';
+import { message } from 'ant-design-vue';
 import { api, INTERVIEW_RESULT_LABELS, INTERVIEW_TYPE_LABELS } from '../api';
+import { useCompanies } from '../composables/useCompanies';
+import CompanySelect from '../components/CompanySelect.vue';
 import RichTextEditor from '../components/RichTextEditor.vue';
+import { getErrorMessage } from '../utils/error';
 import type { InterviewEvent, InterviewType } from '../types';
 
 const router = useRouter();
+const { loadCompanies } = useCompanies();
 const loading = ref(false);
 const events = ref<InterviewEvent[]>([]);
 const selectedDate = ref(dayjs());
 const modalOpen = ref(false);
 
 const form = ref({
-  company: '',
+  company: undefined as string | undefined,
   round: '一面',
   start: dayjs(),
   interviewType: 'remote' as InterviewType,
@@ -167,7 +172,10 @@ async function loadEvents() {
   }
 }
 
-onMounted(loadEvents);
+onMounted(async () => {
+  await loadCompanies();
+  await loadEvents();
+});
 
 function onPanelChange(date: Dayjs | string) {
   selectedDate.value = dayjs(date);
@@ -176,7 +184,7 @@ function onPanelChange(date: Dayjs | string) {
 
 function openCreate(date?: Dayjs) {
   form.value = {
-    company: '',
+    company: undefined,
     round: '一面',
     start: date ?? dayjs().hour(14).minute(0),
     interviewType: 'remote',
@@ -188,17 +196,25 @@ function openCreate(date?: Dayjs) {
 }
 
 async function createEvent() {
-  await api.createEvent({
-    company: form.value.company,
-    round: form.value.round,
-    start: form.value.start.toISOString(),
-    interviewType: form.value.interviewType,
-    location: form.value.location,
-    link: form.value.link,
-    notes: form.value.notes,
-  });
-  modalOpen.value = false;
-  await loadEvents();
+  if (!form.value.company?.trim()) {
+    message.warning('请选择公司');
+    return;
+  }
+  try {
+    await api.createEvent({
+      company: form.value.company,
+      round: form.value.round,
+      start: form.value.start.toISOString(),
+      interviewType: form.value.interviewType,
+      location: form.value.location,
+      link: form.value.link,
+      notes: form.value.notes,
+    });
+    modalOpen.value = false;
+    await loadEvents();
+  } catch (err) {
+    message.error(getErrorMessage(err));
+  }
 }
 
 function goDetail(id: string) {
@@ -243,10 +259,10 @@ function goDetail(id: string) {
       </a-calendar>
     </a-spin>
 
-    <a-modal v-model:open="modalOpen" title="新建面试" @ok="createEvent">
+    <a-modal v-model:open="modalOpen" title="新建面试" :force-render="true" @ok="createEvent">
       <a-form layout="vertical">
         <a-form-item label="公司" required>
-          <a-input v-model:value="form.company" />
+          <CompanySelect v-model:value="form.company" />
         </a-form-item>
         <a-form-item label="轮次">
           <a-input v-model:value="form.round" />

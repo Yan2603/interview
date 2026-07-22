@@ -4,16 +4,25 @@ import { useRoute, useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { api, MASTERY_COLORS, MASTERY_LABELS } from '../api';
 import { useCategories } from '../composables/useCategories';
+import { useCompanies } from '../composables/useCompanies';
 import { useTags } from '../composables/useTags';
 import QuestionPreviewDrawer from '../components/QuestionPreviewDrawer.vue';
 import MarkdownContent from '../components/MarkdownContent.vue';
 import { getErrorMessage, createDebouncedSearch } from '../utils/error';
-import type { Mastery, Question, Tag } from '../types';
+import type { Company, Mastery, Question, Tag } from '../types';
 
 const route = useRoute();
 const router = useRouter();
 const { categories, loadCategories } = useCategories();
 const { tags, loadTags, tagOptions, createTag, updateTag, deleteTag } = useTags();
+const {
+  companies,
+  loadCompanies,
+  companyOptions,
+  createCompany,
+  updateCompany,
+  deleteCompany,
+} = useCompanies();
 
 const loading = ref(false);
 const questions = ref<Question[]>([]);
@@ -27,6 +36,7 @@ const tablePagination = ref({
 });
 const search = ref('');
 const mastery = ref<Mastery | undefined>();
+const companyFilter = ref<string | undefined>();
 const aiLoadingId = ref<string | null>(null);
 const drawerOpen = ref(false);
 const drawerQuestion = ref<Question | null>(null);
@@ -53,16 +63,30 @@ const categoryName = computed(() => {
 
 const modalOpen = ref(false);
 const editingId = ref<string | null>(null);
-const form = ref({ title: '', categorySlug: 'vue3', content: '', tags: [] as string[] });
+const form = ref({
+  title: '',
+  categorySlug: 'vue3',
+  content: '',
+  tags: [] as string[],
+  companies: [] as string[],
+});
 
 const isEditing = computed(() => Boolean(editingId.value));
 const formTagOptions = computed(() => tagOptions(form.value.tags));
+const formCompanyOptions = computed(() => companyOptions(form.value.companies));
+const filterCompanyOptions = computed(() => companyOptions());
 
 const tagModalOpen = ref(false);
 const newTagName = ref('');
 const tagSaving = ref(false);
 const editingTagId = ref<string | null>(null);
 const editingTagName = ref('');
+
+const companyModalOpen = ref(false);
+const newCompanyName = ref('');
+const companySaving = ref(false);
+const editingCompanyId = ref<string | null>(null);
+const editingCompanyName = ref('');
 
 function hasAiAnswer(record: Question) {
   return Boolean(record.aiAnswer?.trim());
@@ -75,6 +99,7 @@ async function load() {
       category: categoryFilter.value,
       search: search.value || undefined,
       mastery: mastery.value,
+      company: companyFilter.value,
       page: tablePagination.value.current,
       pageSize: tablePagination.value.pageSize,
     });
@@ -89,12 +114,12 @@ async function load() {
 const debouncedSearch = createDebouncedSearch(load, 500);
 
 onMounted(async () => {
-  await Promise.all([loadCategories(), loadTags()]);
+  await Promise.all([loadCategories(), loadTags(), loadCompanies()]);
   form.value.categorySlug = categoryFilter.value ?? categories.value[0]?.slug ?? 'vue3';
   await load();
 });
 
-watch([() => route.query.category, mastery], () => {
+watch([() => route.query.category, mastery, companyFilter], () => {
   tablePagination.value.current = 1;
   load();
 });
@@ -111,6 +136,7 @@ function openCreateModal() {
     categorySlug: categoryFilter.value ?? categories.value[0]?.slug ?? 'vue3',
     content: '',
     tags: [],
+    companies: [],
   };
   modalOpen.value = true;
 }
@@ -123,6 +149,7 @@ function openEditModal(record: Question, event?: Event) {
     categorySlug: record.categorySlug,
     content: record.content ?? '',
     tags: [...(record.tags ?? [])],
+    companies: [...(record.companies ?? [])],
   };
   modalOpen.value = true;
 }
@@ -137,6 +164,7 @@ async function submitQuestion() {
     categorySlug: form.value.categorySlug,
     content: form.value.content,
     tags: form.value.tags,
+    companies: form.value.companies,
   };
   try {
     if (editingId.value) {
@@ -272,6 +300,75 @@ async function removeTag(tag: Tag) {
   }
 }
 
+async function openCompanyModal() {
+  await loadCompanies();
+  newCompanyName.value = '';
+  editingCompanyId.value = null;
+  editingCompanyName.value = '';
+  companyModalOpen.value = true;
+}
+
+async function submitNewCompany() {
+  const name = newCompanyName.value.trim();
+  if (!name) {
+    message.warning('请填写公司名称');
+    return;
+  }
+  companySaving.value = true;
+  try {
+    await createCompany(name);
+    newCompanyName.value = '';
+    message.success('公司已添加');
+  } catch (err) {
+    message.error(getErrorMessage(err));
+  } finally {
+    companySaving.value = false;
+  }
+}
+
+function startEditCompany(company: Company) {
+  editingCompanyId.value = company._id;
+  editingCompanyName.value = company.name;
+}
+
+function cancelEditCompany() {
+  editingCompanyId.value = null;
+  editingCompanyName.value = '';
+}
+
+async function saveEditCompany() {
+  if (!editingCompanyId.value) return;
+  const name = editingCompanyName.value.trim();
+  if (!name) {
+    message.warning('请填写公司名称');
+    return;
+  }
+  companySaving.value = true;
+  try {
+    await updateCompany(editingCompanyId.value, name);
+    editingCompanyId.value = null;
+    editingCompanyName.value = '';
+    message.success('公司已更新');
+    await load();
+  } catch (err) {
+    message.error(getErrorMessage(err));
+  } finally {
+    companySaving.value = false;
+  }
+}
+
+async function removeCompany(company: Company) {
+  try {
+    await deleteCompany(company._id);
+    if (companyFilter.value === company.name) {
+      companyFilter.value = undefined;
+    }
+    message.success('公司已删除');
+  } catch (err) {
+    message.error(getErrorMessage(err));
+  }
+}
+
 async function removeQuestion(record: Question) {
   try {
     await api.deleteQuestion(record._id);
@@ -299,13 +396,21 @@ async function removeQuestion(record: Question) {
           allow-clear
           placeholder="掌握度"
           style="width: 120px"
-          @change="load"
         >
           <a-select-option value="new">{{ MASTERY_LABELS.new }}</a-select-option>
           <a-select-option value="reviewing">{{ MASTERY_LABELS.reviewing }}</a-select-option>
           <a-select-option value="mastered">{{ MASTERY_LABELS.mastered }}</a-select-option>
         </a-select>
+        <a-select
+          v-model:value="companyFilter"
+          allow-clear
+          show-search
+          placeholder="公司"
+          style="width: 140px"
+          :options="filterCompanyOptions"
+        />
         <a-button @click="openTagModal">管理标签</a-button>
+        <a-button @click="openCompanyModal">管理公司</a-button>
         <a-button type="primary" @click="openCreateModal">新建题目</a-button>
       </a-space>
     </div>
@@ -316,10 +421,11 @@ async function removeQuestion(record: Question) {
       :columns="[
         { title: '序号', key: 'index', width: 64, align: 'center' },
         { title: '题目', dataIndex: 'title', key: 'title' },
-        { title: '分类', dataIndex: 'categorySlug', key: 'categorySlug', width: 120 },
+        { title: '分类', dataIndex: 'categorySlug', key: 'categorySlug', width: 100 },
+        { title: '公司', key: 'companies', width: 160 },
         { title: '掌握度', key: 'mastery', width: 100 },
         { title: 'AI', key: 'ai', width: 180 },
-        { title: '标签', key: 'tags', width: 180 },
+        { title: '标签', key: 'tags', width: 160 },
         { title: '操作', key: 'actions', width: 120 },
       ]"
       row-key="_id"
@@ -338,6 +444,9 @@ async function removeQuestion(record: Question) {
         </template>
         <template v-else-if="column.key === 'categorySlug'">
           {{ categoryLabel(record.categorySlug) }}
+        </template>
+        <template v-else-if="column.key === 'companies'">
+          <a-tag v-for="company in record.companies" :key="company" color="blue">{{ company }}</a-tag>
         </template>
         <template v-else-if="column.key === 'mastery'">
           <a-tag :color="MASTERY_COLORS[record.mastery as Mastery]">
@@ -432,6 +541,15 @@ async function removeQuestion(record: Question) {
             style="width: 100%"
           />
         </a-form-item>
+        <a-form-item label="关联公司">
+          <a-select
+            v-model:value="form.companies"
+            mode="multiple"
+            placeholder="选择公司"
+            :options="formCompanyOptions"
+            style="width: 100%"
+          />
+        </a-form-item>
       </a-form>
     </a-modal>
 
@@ -479,6 +597,58 @@ async function removeQuestion(record: Question) {
             <a-space v-else>
               <a-button type="link" size="small" @click="startEditTag(record)">编辑</a-button>
               <a-popconfirm title="确定删除该标签？" @confirm="removeTag(record)">
+                <a-button type="link" size="small" danger>删除</a-button>
+              </a-popconfirm>
+            </a-space>
+          </template>
+        </template>
+      </a-table>
+    </a-modal>
+
+    <a-modal
+      v-model:open="companyModalOpen"
+      title="管理公司"
+      width="520px"
+      :footer="null"
+    >
+      <a-space style="width: 100%; margin-bottom: 16px">
+        <a-input
+          v-model:value="newCompanyName"
+          placeholder="新公司名称"
+          style="width: 280px"
+          @press-enter="submitNewCompany"
+        />
+        <a-button type="primary" :loading="companySaving" @click="submitNewCompany">添加</a-button>
+      </a-space>
+
+      <a-table
+        :data-source="companies"
+        :pagination="false"
+        row-key="_id"
+        size="small"
+        :columns="[
+          { title: '公司', key: 'name' },
+          { title: '操作', key: 'actions', width: 120 },
+        ]"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'name'">
+            <a-input
+              v-if="editingCompanyId === record._id"
+              v-model:value="editingCompanyName"
+              size="small"
+              @press-enter="saveEditCompany"
+            />
+            <span v-else>{{ record.name }}</span>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <a-space v-if="editingCompanyId === record._id">
+              <a-button type="link" size="small" :loading="companySaving" @click="saveEditCompany">保存</a-button>
+              <a-button type="link" size="small" @click="cancelEditCompany">取消</a-button>
+            </a-space>
+            <a-space v-else>
+              <a-button type="link" size="small" @click="startEditCompany(record)">编辑</a-button>
+              <a-popconfirm title="确定删除该公司？" @confirm="removeCompany(record)">
                 <a-button type="link" size="small" danger>删除</a-button>
               </a-popconfirm>
             </a-space>

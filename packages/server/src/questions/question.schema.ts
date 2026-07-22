@@ -27,9 +27,12 @@ export class Question {
 
   @Prop({ type: [String], default: [] })
   tags!: string[];
+
+  @Prop({ type: [String], default: [] })
+  companies!: string[];
 }
 
 export const QuestionSchema = SchemaFactory.createForClass(Question);
 
 // 创建文本索引以优化搜索性能
-QuestionSchema.index({ title: 'text', content: 'text', tags: 'text' });
+QuestionSchema.index({ title: 'text', content: 'text', tags: 'text', companies: 'text' });

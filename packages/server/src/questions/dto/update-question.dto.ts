@@ -34,4 +34,9 @@ export class UpdateQuestionDto {
   @IsString({ each: true })
   @IsOptional()
   tags?: string[];
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  companies?: string[];
 }

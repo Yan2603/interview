@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { api, MASTERY_LABELS } from '../api';
 import { useCategories } from '../composables/useCategories';
+import { useCompanies } from '../composables/useCompanies';
 import { useTags } from '../composables/useTags';
 import MarkdownContent from '../components/MarkdownContent.vue';
 import RichTextEditor from '../components/RichTextEditor.vue';
@@ -14,6 +15,7 @@ const route = useRoute();
 const router = useRouter();
 const { categories, loadCategories } = useCategories();
 const { loadTags, tagOptions } = useTags();
+const { loadCompanies, companyOptions } = useCompanies();
 
 const loading = ref(true);
 const aiLoading = ref(false);
@@ -22,9 +24,16 @@ const editing = ref(false);
 const question = ref<Question | null>(null);
 const myNotes = ref('');
 const mastery = ref<Mastery>('new');
-const editForm = ref({ title: '', categorySlug: '', content: '', tags: [] as string[] });
+const editForm = ref({
+  title: '',
+  categorySlug: '',
+  content: '',
+  tags: [] as string[],
+  companies: [] as string[],
+});
 
 const editTagOptions = computed(() => tagOptions(editForm.value.tags));
+const editCompanyOptions = computed(() => companyOptions(editForm.value.companies));
 
 const categoryLabel = computed(() => {
   if (!question.value) return '';
@@ -39,14 +48,14 @@ function syncEditForm() {
     categorySlug: question.value.categorySlug,
     content: question.value.content ?? '',
     tags: [...(question.value.tags ?? [])],
+    companies: [...(question.value.companies ?? [])],
   };
 }
 
 async function load() {
   loading.value = true;
   try {
-    await loadCategories();
-    await loadTags();
+    await Promise.all([loadCategories(), loadTags(), loadCompanies()]);
     question.value = await api.getQuestion(route.params.id as string);
     myNotes.value = question.value.myNotes;
     mastery.value = question.value.mastery;
@@ -81,6 +90,7 @@ async function saveMeta() {
       categorySlug: editForm.value.categorySlug,
       content: editForm.value.content,
       tags: editForm.value.tags,
+      companies: editForm.value.companies,
     });
     editing.value = false;
     message.success('题目信息已保存');
@@ -172,6 +182,15 @@ async function removeQuestion() {
                 style="width: 100%"
               />
             </a-form-item>
+            <a-form-item label="关联公司">
+              <a-select
+                v-model:value="editForm.companies"
+                mode="multiple"
+                placeholder="选择公司"
+                :options="editCompanyOptions"
+                style="width: 100%"
+              />
+            </a-form-item>
             <a-space>
               <a-button type="primary" :loading="saving" @click="saveMeta">保存</a-button>
               <a-button @click="cancelEdit">取消</a-button>
@@ -183,6 +202,7 @@ async function removeQuestion() {
       <template v-else>
         <h2>{{ question.title }}</h2>
         <a-tag>{{ categoryLabel }}</a-tag>
+        <a-tag v-for="company in question.companies" :key="company" color="blue">{{ company }}</a-tag>
         <a-tag v-for="tag in question.tags" :key="tag">{{ tag }}</a-tag>
 
         <a-card v-if="question.content" title="题目描述" style="margin-top: 16px">

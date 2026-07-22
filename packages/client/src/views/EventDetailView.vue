@@ -4,11 +4,15 @@ import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 import { message } from 'ant-design-vue';
 import { api, EVENT_STATUS_COLORS, EVENT_STATUS_LABELS, INTERVIEW_RESULT_COLORS, INTERVIEW_RESULT_LABELS, INTERVIEW_TYPE_LABELS } from '../api';
+import { useCompanies } from '../composables/useCompanies';
+import CompanySelect from '../components/CompanySelect.vue';
 import RichTextEditor from '../components/RichTextEditor.vue';
+import { getErrorMessage } from '../utils/error';
 import type { EventStatus, InterviewEvent, InterviewResult, InterviewType } from '../types';
 
 const route = useRoute();
 const router = useRouter();
+const { loadCompanies } = useCompanies();
 const loading = ref(true);
 const saving = ref(false);
 const savingNotes = ref(false);
@@ -68,6 +72,7 @@ function syncForm() {
 async function load() {
   loading.value = true;
   try {
+    await loadCompanies();
     event.value = await api.getEvent(route.params.id as string);
     syncForm();
   } finally {
@@ -100,6 +105,10 @@ function cancelEditNotes() {
 
 async function save() {
   if (!event.value) return;
+  if (!form.value.company?.trim()) {
+    message.warning('请选择公司');
+    return;
+  }
   saving.value = true;
   try {
     event.value = await api.updateEvent(event.value._id, {
@@ -116,6 +125,8 @@ async function save() {
     notes.value = event.value.notes;
     editing.value = false;
     message.success('已保存');
+  } catch (err) {
+    message.error(getErrorMessage(err));
   } finally {
     saving.value = false;
   }
@@ -163,7 +174,7 @@ async function removeEvent() {
             <a-row :gutter="16">
               <a-col :span="12">
                 <a-form-item label="公司">
-                  <a-input v-model:value="form.company" />
+                  <CompanySelect v-model:value="form.company" :allow-clear="false" />
                 </a-form-item>
               </a-col>
               <a-col :span="12">

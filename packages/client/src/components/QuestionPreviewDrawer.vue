@@ -115,6 +115,7 @@ function goDetail() {
             <a-select-option value="reviewing">{{ MASTERY_LABELS.reviewing }}</a-select-option>
             <a-select-option value="mastered">{{ MASTERY_LABELS.mastered }}</a-select-option>
           </a-select>
+          <a-tag v-for="company in question.companies" :key="company" color="blue">{{ company }}</a-tag>
           <a-tag v-for="tag in question.tags" :key="tag">{{ tag }}</a-tag>
         </div>
 

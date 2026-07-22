@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { sanitizeRichTextHtml } from '../common/sanitize-rich-text';
+import { CompaniesService } from '../companies/companies.service';
 import { InterviewEvent, InterviewType } from './event.schema';
 
 function sanitizeNotes(data: Record<string, unknown>) {
@@ -11,7 +12,10 @@ function sanitizeNotes(data: Record<string, unknown>) {
 
 @Injectable()
 export class EventsService {
-  constructor(@InjectModel(InterviewEvent.name) private model: Model<InterviewEvent>) {}
+  constructor(
+    @InjectModel(InterviewEvent.name) private model: Model<InterviewEvent>,
+    private readonly companiesService: CompaniesService,
+  ) {}
 
   findInRange(from?: string, to?: string) {
     const filter: Record<string, unknown> = {};
@@ -29,7 +33,7 @@ export class EventsService {
     return doc;
   }
 
-  create(data: {
+  async create(data: {
     company: string;
     round?: string;
     start: Date;
@@ -42,12 +46,17 @@ export class EventsService {
     result?: InterviewEvent['result'];
     relatedQuestionIds?: string[];
   }) {
-    return this.model.create(sanitizeNotes(data));
+    const company = await this.companiesService.assertExists(data.company);
+    return this.model.create(sanitizeNotes({ ...data, company }));
   }
 
   async update(id: string, data: Record<string, unknown>) {
+    const payload = { ...data };
+    if (typeof payload.company === 'string') {
+      payload.company = await this.companiesService.assertExists(payload.company);
+    }
     const doc = await this.model
-      .findByIdAndUpdate(id, { $set: sanitizeNotes(data) }, { new: true })
+      .findByIdAndUpdate(id, { $set: sanitizeNotes(payload) }, { new: true })
       .lean();
     if (!doc) throw new NotFoundException('Event not found');
     return doc;

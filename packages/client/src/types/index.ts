@@ -16,6 +16,12 @@ export interface Tag {
   order: number;
 }
 
+export interface Company {
+  _id: string;
+  name: string;
+  order: number;
+}
+
 export interface Question {
   _id: string;
   title: string;
@@ -25,6 +31,7 @@ export interface Question {
   aiAnswer: string;
   mastery: Mastery;
   tags: string[];
+  companies: string[];
   createdAt: string;
   updatedAt: string;
 }

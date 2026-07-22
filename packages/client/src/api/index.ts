@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type {
   Category,
+  Company,
   DashboardSummary,
   InterviewEvent,
   InterviewType,
@@ -32,6 +33,7 @@ export const api = {
     category?: string;
     search?: string;
     mastery?: Mastery;
+    company?: string;
     page?: number;
     pageSize?: number;
   }) =>
@@ -47,6 +49,16 @@ export const api = {
 
   deleteTag: (id: string) => http.delete(`/tags/${id}`).then((r) => r.data),
 
+  getCompanies: () => http.get<Company[]>('/companies').then((r) => r.data),
+
+  createCompany: (data: { name: string; order?: number }) =>
+    http.post<Company>('/companies', data).then((r) => r.data),
+
+  updateCompany: (id: string, data: { name: string }) =>
+    http.patch<Company>(`/companies/${id}`, data).then((r) => r.data),
+
+  deleteCompany: (id: string) => http.delete(`/companies/${id}`).then((r) => r.data),
+
   getQuestion: (id: string) => http.get<Question>(`/questions/${id}`).then((r) => r.data),
 
   createQuestion: (data: {
@@ -55,6 +67,7 @@ export const api = {
     content?: string;
     myNotes?: string;
     tags?: string[];
+    companies?: string[];
   }) => http.post<Question>('/questions', data).then((r) => r.data),
 
   updateQuestion: (id: string, data: Partial<Question>) =>

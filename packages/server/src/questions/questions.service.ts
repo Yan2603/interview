@@ -13,6 +13,7 @@ export interface QuestionQuery {
   category?: string;
   search?: string;
   mastery?: Mastery;
+  company?: string;
   page?: number;
   pageSize?: number;
 }
@@ -36,12 +37,14 @@ export class QuestionsService {
     const filter: FilterQuery<Question> = {};
     if (query.category) filter.categorySlug = query.category;
     if (query.mastery) filter.mastery = query.mastery;
+    if (query.company) filter.companies = query.company;
     if (query.search) {
       const escaped = escapeRegex(query.search);
       filter.$or = [
         { title: { $regex: escaped, $options: 'i' } },
         { content: { $regex: escaped, $options: 'i' } },
         { tags: { $regex: escaped, $options: 'i' } },
+        { companies: { $regex: escaped, $options: 'i' } },
       ];
     }
 

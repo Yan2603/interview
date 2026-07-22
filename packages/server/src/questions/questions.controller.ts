@@ -22,6 +22,7 @@ export class QuestionsController {
     @Query('category') category?: string,
     @Query('search') search?: string,
     @Query('mastery') mastery?: Mastery,
+    @Query('company') company?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
   ) {
@@ -29,6 +30,7 @@ export class QuestionsController {
       category,
       search,
       mastery,
+      company,
       page: page ? Number(page) : undefined,
       pageSize: pageSize ? Number(pageSize) : undefined,
     });
