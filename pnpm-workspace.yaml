@@ -7,4 +7,6 @@ allowBuilds:
   es5-ext: true
   esbuild: true
   vue-demi: true
-  canvas: true
+  # fabric/jsdom 的可选原生依赖；浏览器端不需要。true 会触发 node-pre-gyp，
+  # 在阿里云等受限网络下极易超时（Run Command Timeout）。
+  canvas: false
