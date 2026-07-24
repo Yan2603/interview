@@ -35,6 +35,11 @@ const router = createRouter({
       component: () => import('../views/EventDetailView.vue'),
       meta: { title: '面试详情' },
     },
+    {
+      path: '/laser',
+      component: () => import('../laser/LaserEditorView.vue'),
+      meta: { title: '激光画板' },
+    },
   ],
 });
 
