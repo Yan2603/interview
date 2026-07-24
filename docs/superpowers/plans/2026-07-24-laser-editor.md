@@ -81,7 +81,7 @@ export type PathSnapshot = {
   sourceObjectId?: string;
 };
 
-/** Axis-aligned bounds already in canvas coordinates (after Fabric transforms). */
+/** 轴对齐包围盒，已是画布坐标（含 Fabric 变换后）。 */
 export type ExtractableBoundsObject = {
   id: string;
   type: string;
@@ -694,7 +694,7 @@ export function useDesignCanvas(canvasEl: Ref<HTMLCanvasElement | null>) {
     };
   }
 
-  /** Prefer selection; if empty, return all objects. */
+  /** 优先选中对象；若无选中则返回全部对象。 */
   function getObjectsForSimulation(): ExtractableBoundsObject[] {
     if (!canvas) return [];
     const active = canvas.getActiveObjects();
@@ -800,7 +800,7 @@ import type { PathSnapshot } from '../types';
 type Point = { x: number; y: number };
 
 function rectPathToPoints(d: string): Point[] {
-  // Expect: M L T H R V B H L Z  (from boundsToPathD)
+  // 期望格式：M L T H R V B H L Z（由 boundsToPathD 生成）
   const nums = d.match(/-?\d+(\.\d+)?/g)?.map(Number) ?? [];
   // boundsToPathD: M l t H r V b H l Z → nums: l,t,r,b,l
   if (nums.length < 5) return [];
