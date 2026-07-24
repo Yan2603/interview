@@ -1,73 +1,73 @@
-# Laser Editor (Fabric.js Dual Canvas) Implementation Plan
+# 激光画板（Fabric.js 双 Canvas）实现计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **面向代理式执行者：** 必需子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans，按任务逐步实现本计划。步骤使用复选框（`- [ ]`）语法跟踪进度。
 
-**Goal:** Add a `/laser` route module with Fabric.js design canvas + bare Canvas 2D preview, covering edit/import/export and ordered path simulation for interview practice.
+**目标：** 新增 `/laser` 路由模块，包含 Fabric.js 设计画布 + 原生 Canvas 2D 预览，覆盖编辑/导入/导出以及有序路径模拟，用于面试练习。
 
-**Architecture:** All laser code lives under `packages/client/src/laser/`. Design layer (Fabric) is the source of truth; preview layer consumes `PathSnapshot[]` only. Mode switches between `edit` and `preview` without persisting preview state.
+**架构：** 全部激光相关代码位于 `packages/client/src/laser/`。设计层（Fabric）为唯一数据源；预览层仅消费 `PathSnapshot[]`。在 `edit` 与 `preview` 模式间切换，不持久化预览状态。
 
-**Tech Stack:** Vue 3, Vite, Ant Design Vue, Fabric.js `6.6.1`, Vitest (existing client test runner).
+**技术栈：** Vue 3、Vite、Ant Design Vue、Fabric.js `6.6.1`、Vitest（沿用现有客户端测试运行器）。
 
-## Global Constraints
+## 全局约束
 
-- Laser code only under `packages/client/src/laser/` (plus minimal router/nav wiring outside).
-- Design canvas: Fabric.js; preview canvas: bare Canvas 2D (no second Fabric instance).
-- File import size limit: **5MB**.
-- Image path extraction: **axis-aligned bounding box only** (no raster vectorization).
-- No G-code, no backend APIs, no undo/layers.
-- Prefer TDD for pure utils (`pathExtract`, import validation, download helpers).
-- Chinese UI copy via Ant Design Vue `message` / button labels.
+- 激光相关代码仅放在 `packages/client/src/laser/`（外加最小限度的路由/导航接线）。
+- 设计画布：Fabric.js；预览画布：原生 Canvas 2D（不创建第二个 Fabric 实例）。
+- 文件导入大小限制：**5MB**。
+- 图片路径提取：**仅轴对齐包围盒**（不做光栅矢量化）。
+- 无 G-code、无后端 API、无撤销/图层。
+- 纯工具函数优先 TDD（`pathExtract`、导入校验、下载辅助）。
+- 中文 UI 文案通过 Ant Design Vue `message` / 按钮标签呈现。
 
-## File Map
+## 文件映射
 
-| Path | Responsibility |
+| 路径 | 职责 |
 |---|---|
-| `packages/client/package.json` | Add `fabric@6.6.1` |
-| `packages/client/src/laser/types.ts` | Shared types |
-| `packages/client/src/laser/utils/pathExtract.ts` | Objects → `PathSnapshot[]` |
-| `packages/client/src/laser/utils/pathExtract.test.ts` | Unit tests |
-| `packages/client/src/laser/utils/export.ts` | SVG/JSON download helpers |
-| `packages/client/src/laser/utils/export.test.ts` | Unit tests |
-| `packages/client/src/laser/utils/import.ts` | File validation + load helpers |
-| `packages/client/src/laser/utils/import.test.ts` | Unit tests |
-| `packages/client/src/laser/composables/useDesignCanvas.ts` | Fabric lifecycle + object ops |
-| `packages/client/src/laser/composables/usePreviewCanvas.ts` | Path playback on 2D canvas |
-| `packages/client/src/laser/composables/useLaserPaths.ts` | Bridge: selection → snapshots |
-| `packages/client/src/laser/components/DesignCanvas.vue` | Design canvas host |
-| `packages/client/src/laser/components/PreviewCanvas.vue` | Preview canvas host |
-| `packages/client/src/laser/components/LaserToolbar.vue` | Tools / import / export / mode |
-| `packages/client/src/laser/LaserEditorView.vue` | Page shell + mode orchestration |
-| `packages/client/src/router/index.ts` | Add `/laser` route |
-| `packages/client/src/components/layout/AppLayout.vue` | Side nav entry + selected key |
+| `packages/client/package.json` | 添加 `fabric@6.6.1` |
+| `packages/client/src/laser/types.ts` | 共享类型 |
+| `packages/client/src/laser/utils/pathExtract.ts` | 对象 → `PathSnapshot[]` |
+| `packages/client/src/laser/utils/pathExtract.test.ts` | 单元测试 |
+| `packages/client/src/laser/utils/export.ts` | SVG/JSON 下载辅助 |
+| `packages/client/src/laser/utils/export.test.ts` | 单元测试 |
+| `packages/client/src/laser/utils/import.ts` | 文件校验 + 加载辅助 |
+| `packages/client/src/laser/utils/import.test.ts` | 单元测试 |
+| `packages/client/src/laser/composables/useDesignCanvas.ts` | Fabric 生命周期 + 对象操作 |
+| `packages/client/src/laser/composables/usePreviewCanvas.ts` | 在 2D 画布上播放路径 |
+| `packages/client/src/laser/composables/useLaserPaths.ts` | 桥接：选中对象 → 快照 |
+| `packages/client/src/laser/components/DesignCanvas.vue` | 设计画布宿主 |
+| `packages/client/src/laser/components/PreviewCanvas.vue` | 预览画布宿主 |
+| `packages/client/src/laser/components/LaserToolbar.vue` | 工具 / 导入 / 导出 / 模式 |
+| `packages/client/src/laser/LaserEditorView.vue` | 页面壳 + 模式编排 |
+| `packages/client/src/router/index.ts` | 添加 `/laser` 路由 |
+| `packages/client/src/components/layout/AppLayout.vue` | 侧栏入口 + 选中 key |
 
 ---
 
-### Task 1: Types, dependency, route & nav shell
+### 任务 1：类型、依赖、路由与导航壳
 
-**Files:**
-- Modify: `packages/client/package.json`
-- Create: `packages/client/src/laser/types.ts`
-- Create: `packages/client/src/laser/LaserEditorView.vue` (placeholder page)
-- Modify: `packages/client/src/router/index.ts`
-- Modify: `packages/client/src/components/layout/AppLayout.vue`
+**文件：**
+- 修改：`packages/client/package.json`
+- 新建：`packages/client/src/laser/types.ts`
+- 新建：`packages/client/src/laser/LaserEditorView.vue`（占位页）
+- 修改：`packages/client/src/router/index.ts`
+- 修改：`packages/client/src/components/layout/AppLayout.vue`
 
-**Interfaces:**
-- Consumes: existing Vue Router / AppLayout menu patterns
-- Produces: `EditorMode`, `PathSnapshot`, `ExportFormat`, `ExtractableBoundsObject` exported from `types.ts`; route `/laser` reachable from nav
+**接口：**
+- 消费：现有 Vue Router / AppLayout 菜单模式
+- 产出：从 `types.ts` 导出 `EditorMode`、`PathSnapshot`、`ExportFormat`、`ExtractableBoundsObject`；路由 `/laser` 可从导航进入
 
-- [ ] **Step 1: Install Fabric.js**
+- [ ] **步骤 1：安装 Fabric.js**
 
-From repo root:
+在仓库根目录执行：
 
 ```bash
 pnpm --filter @interview/client add fabric@6.6.1
 ```
 
-Expected: `packages/client/package.json` lists `"fabric": "6.6.1"` (or exact resolved `6.6.1`).
+预期：`packages/client/package.json` 中列出 `"fabric": "6.6.1"`（或精确解析为 `6.6.1`）。
 
-- [ ] **Step 2: Create types**
+- [ ] **步骤 2：创建类型**
 
-Create `packages/client/src/laser/types.ts`:
+创建 `packages/client/src/laser/types.ts`：
 
 ```ts
 export type EditorMode = 'edit' | 'preview';
@@ -89,9 +89,9 @@ export type ExtractableBoundsObject = {
 };
 ```
 
-- [ ] **Step 3: Placeholder view + route**
+- [ ] **步骤 3：占位视图 + 路由**
 
-Create `packages/client/src/laser/LaserEditorView.vue`:
+创建 `packages/client/src/laser/LaserEditorView.vue`：
 
 ```vue
 <script setup lang="ts">
@@ -113,7 +113,7 @@ Create `packages/client/src/laser/LaserEditorView.vue`:
 </style>
 ```
 
-In `packages/client/src/router/index.ts`, add route (alongside existing routes):
+在 `packages/client/src/router/index.ts` 中添加路由（与现有路由并列）：
 
 ```ts
 {
@@ -123,9 +123,9 @@ In `packages/client/src/router/index.ts`, add route (alongside existing routes):
 },
 ```
 
-- [ ] **Step 4: Side nav entry**
+- [ ] **步骤 4：侧栏导航入口**
 
-In `AppLayout.vue` `mainSelectedKeys`:
+在 `AppLayout.vue` 的 `mainSelectedKeys` 中：
 
 ```ts
 const mainSelectedKeys = computed(() => {
@@ -136,7 +136,7 @@ const mainSelectedKeys = computed(() => {
 });
 ```
 
-In the menu template, after the calendar item:
+在菜单模板中，日历项之后添加：
 
 ```vue
 <a-menu-item key="laser">
@@ -144,38 +144,38 @@ In the menu template, after the calendar item:
 </a-menu-item>
 ```
 
-- [ ] **Step 5: Smoke-check route**
+- [ ] **步骤 5：路由冒烟检查**
 
-Run: `pnpm --filter @interview/client dev`
+运行：`pnpm --filter @interview/client dev`
 
-Open `http://localhost:5173/laser` — placeholder heading visible; side nav highlights「激光画板」.
+打开 `http://localhost:5173/laser` — 占位标题可见；侧栏高亮「激光画板」。
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6：提交**
 
 ```bash
 git add packages/client/package.json packages/client/pnpm-lock.yaml pnpm-lock.yaml packages/client/src/laser/types.ts packages/client/src/laser/LaserEditorView.vue packages/client/src/router/index.ts packages/client/src/components/layout/AppLayout.vue
 git commit -m "feat(laser): scaffold /laser route, types, and Fabric dependency"
 ```
 
-(If lockfile only exists at repo root, add that path instead.)
+（若 lockfile 仅存在于仓库根目录，则改用该路径。）
 
 ---
 
-### Task 2: Path extraction (TDD)
+### 任务 2：路径提取（TDD）
 
-**Files:**
-- Create: `packages/client/src/laser/utils/pathExtract.ts`
-- Create: `packages/client/src/laser/utils/pathExtract.test.ts`
+**文件：**
+- 新建：`packages/client/src/laser/utils/pathExtract.ts`
+- 新建：`packages/client/src/laser/utils/pathExtract.test.ts`
 
-**Interfaces:**
-- Consumes: `ExtractableBoundsObject`, `PathSnapshot` from `../types`
-- Produces:
+**接口：**
+- 消费：来自 `../types` 的 `ExtractableBoundsObject`、`PathSnapshot`
+- 产出：
   - `boundsToPathD(bounds): string`
   - `extractPathsFromObjects(objects: ExtractableBoundsObject[]): PathSnapshot[]`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **步骤 1：编写失败测试**
 
-Create `packages/client/src/laser/utils/pathExtract.test.ts`:
+创建 `packages/client/src/laser/utils/pathExtract.test.ts`：
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -226,17 +226,17 @@ describe('extractPathsFromObjects', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests — expect FAIL**
+- [ ] **步骤 2：运行测试 — 预期失败**
 
 ```bash
 pnpm --filter @interview/client test -- src/laser/utils/pathExtract.test.ts
 ```
 
-Expected: FAIL (module not found / exports missing).
+预期：FAIL（模块未找到 / 导出缺失）。
 
-- [ ] **Step 3: Implement**
+- [ ] **步骤 3：实现**
 
-Create `packages/client/src/laser/utils/pathExtract.ts`:
+创建 `packages/client/src/laser/utils/pathExtract.ts`：
 
 ```ts
 import type { ExtractableBoundsObject, PathSnapshot } from '../types';
@@ -271,15 +271,15 @@ export function extractPathsFromObjects(
 }
 ```
 
-- [ ] **Step 4: Run tests — expect PASS**
+- [ ] **步骤 4：运行测试 — 预期通过**
 
 ```bash
 pnpm --filter @interview/client test -- src/laser/utils/pathExtract.test.ts
 ```
 
-Expected: PASS.
+预期：PASS。
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add packages/client/src/laser/utils/pathExtract.ts packages/client/src/laser/utils/pathExtract.test.ts
@@ -288,17 +288,17 @@ git commit -m "feat(laser): add bounding-box path extraction utils"
 
 ---
 
-### Task 3: Import validation & export download helpers (TDD)
+### 任务 3：导入校验与导出下载辅助（TDD）
 
-**Files:**
-- Create: `packages/client/src/laser/utils/import.ts`
-- Create: `packages/client/src/laser/utils/import.test.ts`
-- Create: `packages/client/src/laser/utils/export.ts`
-- Create: `packages/client/src/laser/utils/export.test.ts`
+**文件：**
+- 新建：`packages/client/src/laser/utils/import.ts`
+- 新建：`packages/client/src/laser/utils/import.test.ts`
+- 新建：`packages/client/src/laser/utils/export.ts`
+- 新建：`packages/client/src/laser/utils/export.test.ts`
 
-**Interfaces:**
-- Consumes: none from Fabric (pure)
-- Produces:
+**接口：**
+- 消费：不依赖 Fabric（纯函数）
+- 产出：
   - `MAX_IMPORT_BYTES = 5 * 1024 * 1024`
   - `validateImportFile(file: { name: string; size: number; type: string }): { ok: true; kind: 'image' | 'svg' } | { ok: false; message: string }`
   - `readFileAsDataURL(file: File): Promise<string>`
@@ -306,9 +306,9 @@ git commit -m "feat(laser): add bounding-box path extraction utils"
   - `downloadTextFile(filename: string, content: string, mime: string): void`
   - `buildExportFilename(format: 'svg' | 'json'): string`
 
-- [ ] **Step 1: Write failing import tests**
+- [ ] **步骤 1：编写失败的导入测试**
 
-Create `packages/client/src/laser/utils/import.test.ts`:
+创建 `packages/client/src/laser/utils/import.test.ts`：
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -350,9 +350,9 @@ describe('validateImportFile', () => {
 });
 ```
 
-- [ ] **Step 2: Write failing export tests**
+- [ ] **步骤 2：编写失败的导出测试**
 
-Create `packages/client/src/laser/utils/export.test.ts`:
+创建 `packages/client/src/laser/utils/export.test.ts`：
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -369,15 +369,15 @@ describe('buildExportFilename', () => {
 });
 ```
 
-- [ ] **Step 3: Run tests — expect FAIL**
+- [ ] **步骤 3：运行测试 — 预期失败**
 
 ```bash
 pnpm --filter @interview/client test -- src/laser/utils/import.test.ts src/laser/utils/export.test.ts
 ```
 
-Expected: FAIL.
+预期：FAIL。
 
-- [ ] **Step 4: Implement import.ts**
+- [ ] **步骤 4：实现 import.ts**
 
 ```ts
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
@@ -437,7 +437,7 @@ export function readFileAsText(file: File): Promise<string> {
 }
 ```
 
-- [ ] **Step 5: Implement export.ts**
+- [ ] **步骤 5：实现 export.ts**
 
 ```ts
 import type { ExportFormat } from '../types';
@@ -461,15 +461,15 @@ export function downloadTextFile(
 }
 ```
 
-- [ ] **Step 6: Run tests — expect PASS**
+- [ ] **步骤 6：运行测试 — 预期通过**
 
 ```bash
 pnpm --filter @interview/client test -- src/laser/utils/import.test.ts src/laser/utils/export.test.ts
 ```
 
-Expected: PASS.
+预期：PASS。
 
-- [ ] **Step 7: Commit**
+- [ ] **步骤 7：提交**
 
 ```bash
 git add packages/client/src/laser/utils/import.ts packages/client/src/laser/utils/import.test.ts packages/client/src/laser/utils/export.ts packages/client/src/laser/utils/export.test.ts
@@ -478,27 +478,27 @@ git commit -m "feat(laser): add import validation and export download helpers"
 
 ---
 
-### Task 4: Design canvas composable + component
+### 任务 4：设计画布 composable + 组件
 
-**Files:**
-- Create: `packages/client/src/laser/composables/useDesignCanvas.ts`
-- Create: `packages/client/src/laser/components/DesignCanvas.vue`
+**文件：**
+- 新建：`packages/client/src/laser/composables/useDesignCanvas.ts`
+- 新建：`packages/client/src/laser/components/DesignCanvas.vue`
 
-**Interfaces:**
-- Consumes: `fabric` Canvas API; import/export utils
-- Produces `useDesignCanvas(canvasEl: Ref<HTMLCanvasElement | null>)` returning:
+**接口：**
+- 消费：`fabric` Canvas API；导入/导出工具
+- 产出 `useDesignCanvas(canvasEl: Ref<HTMLCanvasElement | null>)`，返回：
   - `ready: Ref<boolean>`
   - `selectedCount: Ref<number>`
   - `objectCount: Ref<number>`
   - `init(): void` / `dispose(): void`
   - `setLocked(locked: boolean): void`
-  - `addRect()`, `addEllipse()`, `addLine()`, `addText()`
-  - `deleteSelected()`, `clearAll()`
+  - `addRect()`、`addEllipse()`、`addLine()`、`addText()`
+  - `deleteSelected()`、`clearAll()`
   - `importFile(file: File): Promise<void>`
-  - `exportSvg(): string | null`, `exportJson(): string | null`
+  - `exportSvg(): string | null`、`exportJson(): string | null`
   - `getObjectsForSimulation(): ExtractableBoundsObject[]`
 
-- [ ] **Step 1: Implement `useDesignCanvas.ts`**
+- [ ] **步骤 1：实现 `useDesignCanvas.ts`**
 
 ```ts
 import { onBeforeUnmount, ref, type Ref } from 'vue';
@@ -725,7 +725,7 @@ export function useDesignCanvas(canvasEl: Ref<HTMLCanvasElement | null>) {
 }
 ```
 
-- [ ] **Step 2: Implement `DesignCanvas.vue`**
+- [ ] **步骤 2：实现 `DesignCanvas.vue`**
 
 ```vue
 <script setup lang="ts">
@@ -756,7 +756,7 @@ onMounted(async () => {
 </style>
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **步骤 3：提交**
 
 ```bash
 git add packages/client/src/laser/composables/useDesignCanvas.ts packages/client/src/laser/components/DesignCanvas.vue
@@ -765,20 +765,20 @@ git commit -m "feat(laser): add Fabric design canvas composable and component"
 
 ---
 
-### Task 5: Preview canvas + path bridge
+### 任务 5：预览画布 + 路径桥接
 
-**Files:**
-- Create: `packages/client/src/laser/composables/useLaserPaths.ts`
-- Create: `packages/client/src/laser/composables/usePreviewCanvas.ts`
-- Create: `packages/client/src/laser/components/PreviewCanvas.vue`
+**文件：**
+- 新建：`packages/client/src/laser/composables/useLaserPaths.ts`
+- 新建：`packages/client/src/laser/composables/usePreviewCanvas.ts`
+- 新建：`packages/client/src/laser/components/PreviewCanvas.vue`
 
-**Interfaces:**
-- Consumes: `extractPathsFromObjects`, `PathSnapshot`, `ExtractableBoundsObject`
-- Produces:
-  - `buildLaserPaths(objects: ExtractableBoundsObject[]): PathSnapshot[]` in `useLaserPaths.ts` (thin wrapper)
-  - `usePreviewCanvas(canvasEl)` with `load(paths)`, `play()`, `pause()`, `reset()`, `clear()`, `dispose()`, `progress: Ref<number>`, `playing: Ref<boolean>`
+**接口：**
+- 消费：`extractPathsFromObjects`、`PathSnapshot`、`ExtractableBoundsObject`
+- 产出：
+  - `useLaserPaths.ts` 中的 `buildLaserPaths(objects: ExtractableBoundsObject[]): PathSnapshot[]`（薄封装）
+  - `usePreviewCanvas(canvasEl)`，含 `load(paths)`、`play()`、`pause()`、`reset()`、`clear()`、`dispose()`、`progress: Ref<number>`、`playing: Ref<boolean>`
 
-- [ ] **Step 1: Implement `useLaserPaths.ts`**
+- [ ] **步骤 1：实现 `useLaserPaths.ts`**
 
 ```ts
 import type { ExtractableBoundsObject, PathSnapshot } from '../types';
@@ -789,9 +789,9 @@ export function buildLaserPaths(objects: ExtractableBoundsObject[]): PathSnapsho
 }
 ```
 
-- [ ] **Step 2: Implement `usePreviewCanvas.ts`**
+- [ ] **步骤 2：实现 `usePreviewCanvas.ts`**
 
-Path drawing strategy: parse simple `M x y H x2 V y2 H x Z` rectangles produced by `boundsToPathD`, stroke perimeter progressively with `requestAnimationFrame`.
+路径绘制策略：解析 `boundsToPathD` 生成的简单 `M x y H x2 V y2 H x Z` 矩形，用 `requestAnimationFrame` 逐步描边周长。
 
 ```ts
 import { onBeforeUnmount, ref, type Ref } from 'vue';
@@ -989,9 +989,9 @@ export function usePreviewCanvas(canvasEl: Ref<HTMLCanvasElement | null>) {
 }
 ```
 
-Simplify if the progressive-edge logic is too heavy during implementation: acceptable fallback is **draw full path one-by-one with a timer** (still ordered simulation). Prefer the rAF version above; if stuck >30 minutes, replace `frame()` with sequential full-path strokes every 400ms.
+若实现时渐进描边逻辑过重，可简化：可接受的回退方案是**用定时器逐条完整绘制路径**（仍保持有序模拟）。优先采用上方 rAF 版本；若卡住超过 30 分钟，将 `frame()` 替换为每 400ms 顺序描完整路径。
 
-- [ ] **Step 3: Implement `PreviewCanvas.vue`**
+- [ ] **步骤 3：实现 `PreviewCanvas.vue`**
 
 ```vue
 <script setup lang="ts">
@@ -1022,7 +1022,7 @@ onMounted(async () => {
 </style>
 ```
 
-- [ ] **Step 4: Commit**
+- [ ] **步骤 4：提交**
 
 ```bash
 git add packages/client/src/laser/composables/useLaserPaths.ts packages/client/src/laser/composables/usePreviewCanvas.ts packages/client/src/laser/components/PreviewCanvas.vue
@@ -1031,17 +1031,17 @@ git commit -m "feat(laser): add preview canvas path playback"
 
 ---
 
-### Task 6: Toolbar + editor page integration
+### 任务 6：工具栏 + 编辑器页面集成
 
-**Files:**
-- Create: `packages/client/src/laser/components/LaserToolbar.vue`
-- Modify: `packages/client/src/laser/LaserEditorView.vue`
+**文件：**
+- 新建：`packages/client/src/laser/components/LaserToolbar.vue`
+- 修改：`packages/client/src/laser/LaserEditorView.vue`
 
-**Interfaces:**
-- Consumes: design/preview exposed methods; `buildLaserPaths`; `downloadTextFile` / `buildExportFilename`
-- Produces: working `/laser` page with edit + preview modes
+**接口：**
+- 消费：design/preview 暴露的方法；`buildLaserPaths`；`downloadTextFile` / `buildExportFilename`
+- 产出：可用的 `/laser` 页面，含编辑 + 预览模式
 
-- [ ] **Step 1: Implement `LaserToolbar.vue`**
+- [ ] **步骤 1：实现 `LaserToolbar.vue`**
 
 ```vue
 <script setup lang="ts">
@@ -1133,9 +1133,9 @@ function onImportChange(e: Event) {
 </style>
 ```
 
-If `a-upload` wrapping is awkward, replace the import control with a plain `<input type="file">` + `a-button` label only (no `a-upload`).
+若 `a-upload` 包裹不便，可将导入控件替换为普通 `<input type="file">` + `a-button` 标签（不用 `a-upload`）。
 
-- [ ] **Step 2: Rewrite `LaserEditorView.vue`**
+- [ ] **步骤 2：重写 `LaserEditorView.vue`**
 
 ```vue
 <script setup lang="ts">
@@ -1266,27 +1266,27 @@ function exitPreview() {
 </style>
 ```
 
-- [ ] **Step 3: Typecheck / unit tests**
+- [ ] **步骤 3：类型检查 / 单元测试**
 
 ```bash
 pnpm --filter @interview/client test
 pnpm --filter @interview/client exec vue-tsc -b --pretty false
 ```
 
-Expected: tests pass; fix any Fabric 6 type mismatches (`FabricText` vs `IText`, `getBoundingRect()` signature, `util.groupSVGElements`) until `vue-tsc` is clean.
+预期：测试通过；修复任何 Fabric 6 类型不匹配（`FabricText` vs `IText`、`getBoundingRect()` 签名、`util.groupSVGElements`），直到 `vue-tsc` 干净。
 
-- [ ] **Step 4: Manual acceptance**
+- [ ] **步骤 4：手动验收**
 
-Run `pnpm --filter @interview/client dev` and verify:
+运行 `pnpm --filter @interview/client dev` 并验证：
 
-1. Add rect/ellipse/line/text; drag/scale/rotate  
-2. Delete selected; clear  
-3. Import PNG and SVG (<5MB); reject oversized with message  
-4. Export SVG/JSON downloads; empty canvas warns  
-5. Select objects → 开始模拟 → preview overlay animates in order  
-6. Pause / 重播 / 退出模拟 returns to editable design  
+1. 添加矩形/椭圆/直线/文字；拖拽/缩放/旋转  
+2. 删除选中；清空  
+3. 导入 PNG 与 SVG（<5MB）；超限时用 message 拒绝  
+4. 导出 SVG/JSON 可下载；空画布给出警告  
+5. 选中对象 → 开始模拟 → 预览层按顺序动画  
+6. 暂停 / 重播 / 退出模拟 后回到可编辑设计态  
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add packages/client/src/laser/components/LaserToolbar.vue packages/client/src/laser/LaserEditorView.vue
@@ -1295,35 +1295,35 @@ git commit -m "feat(laser): wire toolbar and dual-canvas editor page"
 
 ---
 
-## Spec Coverage Self-Review
+## 规格覆盖自检
 
-| Spec requirement | Task |
+| 规格要求 | 任务 |
 |---|---|
-| Unified `src/laser/` layout | 1–6 |
-| Route `/laser` + nav | 1 |
-| Fabric design + bare 2D preview | 4–5 |
-| Shapes, text, transform, delete, clear | 4, 6 |
-| Import image/SVG + 5MB limit | 3, 4, 6 |
-| Export SVG/JSON + empty guard | 3, 4, 6 |
-| Selection → ordered path simulation | 2, 5, 6 |
-| Play/pause/reset/exit; lock design in preview | 5, 6 |
-| Image = bbox path only | 2, 4 |
-| Unit tests for pure utils | 2, 3 |
-| Dispose on unmount | 4, 5 |
+| 统一 `src/laser/` 布局 | 1–6 |
+| 路由 `/laser` + 导航 | 1 |
+| Fabric 设计 + 原生 2D 预览 | 4–5 |
+| 形状、文字、变换、删除、清空 | 4, 6 |
+| 导入图片/SVG + 5MB 限制 | 3, 4, 6 |
+| 导出 SVG/JSON + 空内容保护 | 3, 4, 6 |
+| 选中 → 有序路径模拟 | 2, 5, 6 |
+| 播放/暂停/重播/退出；预览时锁定设计 | 5, 6 |
+| 图片 = 仅 bbox 路径 | 2, 4 |
+| 纯工具函数单元测试 | 2, 3 |
+| 卸载时 dispose | 4, 5 |
 
-**Placeholder scan:** none intentionally left.
+**占位符扫描：** 无故意遗留。
 
-**Type consistency:** `PathSnapshot`, `ExtractableBoundsObject`, `getObjectsForSimulation`, `buildLaserPaths`, `EditorMode` names aligned across tasks.
+**类型一致性：** `PathSnapshot`、`ExtractableBoundsObject`、`getObjectsForSimulation`、`buildLaserPaths`、`EditorMode` 名称在各任务间对齐。
 
 ---
 
-## Execution Handoff
+## 执行交接
 
-Plan complete and saved to `docs/superpowers/plans/2026-07-24-laser-editor.md`.
+计划已完成并保存至 `docs/superpowers/plans/2026-07-24-laser-editor.md`。
 
-Two execution options:
+两种执行方式：
 
-1. **Subagent-Driven (recommended)** — fresh subagent per task, review between tasks  
-2. **Inline Execution** — run tasks in this session with executing-plans checkpoints  
+1. **子代理驱动（推荐）** — 每任务使用新子代理，任务间进行评审  
+2. **本会话内联执行** — 在本会话按任务执行，配合 executing-plans 检查点  
 
-Which approach?
+采用哪种方式？
