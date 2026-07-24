@@ -89,13 +89,15 @@ function exitPreview() {
       @pause="previewRef?.pause()"
       @reset="previewRef?.reset(); previewRef?.play()"
     />
-    <div class="stage" :class="{ preview: mode === 'preview' }">
-      <DesignCanvas ref="designRef" class="layer design" />
-      <PreviewCanvas
-        v-show="mode === 'preview'"
-        ref="previewRef"
-        class="layer preview-layer"
-      />
+    <div class="stage-scroll">
+      <div class="stage" :class="{ preview: mode === 'preview' }">
+        <DesignCanvas ref="designRef" class="layer design" />
+        <PreviewCanvas
+          v-show="mode === 'preview'"
+          ref="previewRef"
+          class="layer preview-layer"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -106,10 +108,12 @@ function exitPreview() {
   background: #fff;
   min-height: calc(100vh - 48px);
 }
+.stage-scroll {
+  overflow-x: auto;
+}
 .stage {
   position: relative;
   width: 900px;
-  max-width: 100%;
   height: 560px;
 }
 .layer {

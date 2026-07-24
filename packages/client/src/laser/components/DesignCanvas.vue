@@ -21,6 +21,5 @@ onMounted(async () => {
 .design-canvas {
   display: block;
   border: 1px solid #d9d9d9;
-  max-width: 100%;
 }
 </style>
