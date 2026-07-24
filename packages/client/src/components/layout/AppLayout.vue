@@ -22,6 +22,7 @@ onMounted(loadCategories);
 const mainSelectedKeys = computed(() => {
   if (route.path.startsWith('/questions')) return ['questions'];
   if (route.path.startsWith('/calendar')) return ['calendar'];
+  if (route.path.startsWith('/laser')) return ['laser'];
   return ['dashboard'];
 });
 
@@ -117,6 +118,9 @@ async function removeCategory(cat: Category) {
         </a-menu-item>
         <a-menu-item key="calendar">
           <router-link to="/calendar">日历</router-link>
+        </a-menu-item>
+        <a-menu-item key="laser">
+          <router-link to="/laser">激光画板</router-link>
         </a-menu-item>
 
         <a-menu-divider />
