@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { ChatSession, KnowledgeDocument } from '../chat/types';
 import type {
   Category,
   Company,
@@ -116,6 +117,29 @@ export const api = {
   // TODO: 后续鉴权提案实现真实接口 POST /api/auth/sms/send，此处仅 mock 成功
   sendSmsCode: (_phone: string, _dialCode: string): Promise<void> =>
     new Promise((resolve) => setTimeout(resolve, 500)),
+
+  listKnowledgeDocuments: () =>
+    http.get<KnowledgeDocument[]>('/knowledge/documents').then((r) => r.data),
+
+  uploadKnowledgeDocument: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return http.post<KnowledgeDocument>('/knowledge/documents', form).then((r) => r.data);
+  },
+
+  deleteKnowledgeDocument: (id: string) =>
+    http.delete(`/knowledge/documents/${id}`).then((r) => r.data),
+
+  listChatSessions: () => http.get<ChatSession[]>('/chat/sessions').then((r) => r.data),
+
+  createChatSession: (title?: string) =>
+    http.post<ChatSession>('/chat/sessions', { title }).then((r) => r.data),
+
+  getChatSession: (id: string) =>
+    http.get<ChatSession>(`/chat/sessions/${id}`).then((r) => r.data),
+
+  deleteChatSession: (id: string) =>
+    http.delete(`/chat/sessions/${id}`).then((r) => r.data),
 };
 
 export const MASTERY_LABELS: Record<Mastery, string> = {
