@@ -4,6 +4,7 @@ import { extname, join } from 'path';
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -160,19 +161,31 @@ export class KnowledgeService {
       await this.rag.deleteBySource('document', id);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`deleteBySource failed id=${id}: ${message}`);
+      this.logger.error(`deleteBySource failed id=${id}: ${message}`);
+      throw new InternalServerErrorException('删除向量数据失败，请稍后重试');
     }
 
-    if (existsSync(doc.storagePath)) {
-      try {
-        unlinkSync(doc.storagePath);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        this.logger.warn(`unlink failed path=${doc.storagePath}: ${message}`);
-      }
-    }
+    this.unlinkStorageFile(doc.storagePath);
 
     await this.repo.remove(doc);
+  }
+
+  private unlinkStorageFile(storagePath: string): void {
+    if (!existsSync(storagePath)) {
+      return;
+    }
+
+    try {
+      unlinkSync(storagePath);
+    } catch (err) {
+      const nodeErr = err as NodeJS.ErrnoException;
+      if (nodeErr.code === 'ENOENT') {
+        return;
+      }
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`unlink failed path=${storagePath}: ${message}`);
+      throw new InternalServerErrorException('删除磁盘文件失败，请稍后重试');
+    }
   }
 
   private toDto(doc: KnowledgeDocument): KnowledgeDocumentDto {
