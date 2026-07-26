@@ -17,13 +17,17 @@ import {
   KnowledgeService,
   UploadedKnowledgeFile,
 } from './knowledge.service';
+import { QuestionIndexerService } from './question-indexer.service';
 
 const MAX_SIZE = 10 * 1024 * 1024;
 const ALLOWED_EXT = new Set(['.md', '.txt', '.pdf', '.docx']);
 
 @Controller('knowledge')
 export class KnowledgeController {
-  constructor(private readonly service: KnowledgeService) {}
+  constructor(
+    private readonly service: KnowledgeService,
+    private readonly questionIndexer: QuestionIndexerService,
+  ) {}
 
   @Post('documents')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
@@ -59,5 +63,10 @@ export class KnowledgeController {
   @HttpCode(204)
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     await this.service.removeDocument(id);
+  }
+
+  @Post('reindex/questions')
+  reindexQuestions() {
+    return this.questionIndexer.reindexAll();
   }
 }

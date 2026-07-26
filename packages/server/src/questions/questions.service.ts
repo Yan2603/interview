@@ -60,6 +60,11 @@ export class QuestionsService {
     return { items, total, page, pageSize };
   }
 
+  /** 全量题目（索引对账用，无分页） */
+  findAllForIndex() {
+    return this.model.find().lean();
+  }
+
   async findOne(id: string) {
     const doc = await this.model.findById(id).lean();
     if (!doc) throw new NotFoundException('Question not found');
