@@ -377,9 +377,13 @@ export class MilvusBrowserService {
     }
     const q = (input.query ?? '').trim();
     if (!q) throw new BadRequestException('query 不能为空');
-    const topK = Math.min(Math.max(input.topK ?? 6, 1), 50);
+    const rawTopK = Number(input.topK);
+    const topK = Number.isFinite(rawTopK)
+      ? Math.min(Math.max(Math.trunc(rawTopK), 1), 50)
+      : 6;
 
-    try {
+    return this.withClient(async (client) => {
+      await this.assertCollectionExists(client, name);
       const embeddings = createEmbeddings(this.config);
       const url = this.config.get<string>('MILVUS_URI', 'http://localhost:19530');
       const store = await Milvus.fromExistingCollection(embeddings, {
@@ -394,8 +398,6 @@ export class MilvusBrowserService {
           ...doc.metadata,
         })),
       };
-    } catch (err) {
-      this.rethrow(err);
-    }
+    });
   }
 }

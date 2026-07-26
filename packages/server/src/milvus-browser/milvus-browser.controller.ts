@@ -46,9 +46,9 @@ export class MilvusBrowserController {
     @Body() body: { expr?: string; outputFields?: string[]; limit?: number },
   ) {
     return this.service.query(name, {
-      expr: body.expr ?? '',
-      outputFields: body.outputFields,
-      limit: clampEntityLimit(body.limit),
+      expr: body?.expr ?? '',
+      outputFields: body?.outputFields,
+      limit: clampEntityLimit(body?.limit),
       fullVector: false,
     });
   }

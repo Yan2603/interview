@@ -6,12 +6,17 @@ import { getErrorMessage } from '../utils/error';
 import type {
   MilvusCollectionSchema,
   MilvusCollectionSummary,
+  MilvusIndexSchema,
 } from './milvus-types';
 import EntityTable from './milvus/EntityTable.vue';
 
 const RAG_COLLECTION = 'interview_rag';
 
 type ViewMode = 'list' | 'detail';
+
+function indexRowKey(r: MilvusIndexSchema) {
+  return `${r.fieldName}-${r.indexName}`;
+}
 
 const view = ref<ViewMode>('list');
 const selectedName = ref<string | null>(null);
@@ -295,10 +300,7 @@ onMounted(() => {
                 <a-table
                   size="small"
                   :data-source="schema?.indexes ?? []"
-                  :row-key="
-                    (r: { fieldName: string; indexName: string }) =>
-                      `${r.fieldName}-${r.indexName}`
-                  "
+                  :row-key="indexRowKey"
                   :pagination="false"
                 >
                   <a-table-column title="字段" data-index="fieldName" key="fieldName" />
