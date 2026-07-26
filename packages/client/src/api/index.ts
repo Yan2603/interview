@@ -1,5 +1,9 @@
 import axios from 'axios';
-import type { ChatSession, KnowledgeDocument } from '../chat/types';
+import type {
+  ChatSession,
+  KnowledgeDocument,
+  QuestionIndexStatusResponse,
+} from '../chat/types';
 import type {
   Category,
   Company,
@@ -129,6 +133,14 @@ export const api = {
 
   deleteKnowledgeDocument: (id: string) =>
     http.delete(`/knowledge/documents/${id}`).then((r) => r.data),
+
+  reindexQuestions: () =>
+    http
+      .post<{ indexed: number; total: number }>('/knowledge/reindex/questions')
+      .then((r) => r.data),
+
+  getQuestionIndexStatus: () =>
+    http.get<QuestionIndexStatusResponse>('/knowledge/questions/index-status').then((r) => r.data),
 
   listChatSessions: () => http.get<ChatSession[]>('/chat/sessions').then((r) => r.data),
 

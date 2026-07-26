@@ -9,17 +9,18 @@ export function parseSseChunk(buffer: string): { events: SseEvent[]; rest: strin
     if (!part.trim()) continue;
 
     let eventType = '';
-    let data = '';
+    const dataLines: string[] = [];
 
     for (const line of part.split('\n')) {
-      if (line.startsWith('event: ')) {
-        eventType = line.slice(7);
-      } else if (line.startsWith('data: ')) {
-        data = line.slice(6);
+      if (line.startsWith('event:')) {
+        eventType = line.slice(6).trimStart();
+      } else if (line.startsWith('data:')) {
+        dataLines.push(line.slice(5).trimStart());
       }
     }
 
     if (!eventType) continue;
+    const data = dataLines.join('\n');
 
     switch (eventType) {
       case 'token':

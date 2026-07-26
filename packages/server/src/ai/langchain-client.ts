@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ChatOpenAI } from '@langchain/openai';
 
@@ -15,7 +15,7 @@ export class LangchainClient {
     const apiKey = this.config.get<string>('AI_API_KEY');
     if (!apiKey) {
       this.logger.error('AI_API_KEY is not configured');
-      throw new Error('AI_API_KEY is not configured');
+      throw new ServiceUnavailableException('AI_API_KEY is not configured');
     }
 
     const model = this.config.get<string>('AI_MODEL', 'qwen-max');

@@ -31,7 +31,14 @@ export class ChatRagService {
         headersSent = true;
       }
       res.write(`event: ${event}\ndata: ${data}\n\n`);
+      if (typeof (res as Response & { flush?: () => void }).flush === 'function') {
+        (res as Response & { flush: () => void }).flush();
+      }
     };
+
+    let fullText = '';
+    let sources: ChatSourceRef[] = [];
+    let tokensStarted = false;
 
     try {
       await this.chat.appendMessage(sessionId, { role: 'user', content });
@@ -41,12 +48,18 @@ export class ChatRagService {
       try {
         retrieved = await this.rag.retrieve(content, 6);
       } catch (err) {
+        if (err instanceof ServiceUnavailableException) {
+          throw err;
+        }
         const message = err instanceof Error ? err.message : String(err);
         this.logger.error(`RAG retrieve failed: ${message}`);
+        if (message.includes('AI_API_KEY')) {
+          throw new ServiceUnavailableException('AI_API_KEY is not configured');
+        }
         throw new ServiceUnavailableException('知识库检索暂时不可用');
       }
 
-      const sources = docsToSources(
+      sources = docsToSources(
         retrieved.map((doc) => ({
           pageContent: doc.pageContent,
           metadata: doc.metadata as Record<string, unknown>,
@@ -63,8 +76,8 @@ export class ChatRagService {
         content: m.content,
       }));
 
-      let fullText = '';
       for await (const token of this.llm.stream(system, messages)) {
+        tokensStarted = true;
         fullText += token;
         send('token', token);
       }
@@ -84,7 +97,33 @@ export class ChatRagService {
       this.logger.error(`streamAnswer failed session=${sessionId}: ${message}`);
 
       if (!headersSent) {
+        if (err instanceof ServiceUnavailableException) {
+          throw err;
+        }
+        if (message.includes('AI_API_KEY')) {
+          throw new ServiceUnavailableException('AI_API_KEY is not configured');
+        }
         throw err;
+      }
+
+      // Mid-stream failure: persist partial content / failure marker (design acceptance).
+      if (tokensStarted || fullText.length > 0) {
+        const failedContent = fullText
+          ? `${fullText}\n\n[生成中断：${message}]`
+          : `[生成失败：${message}]`;
+        try {
+          await this.chat.appendMessage(sessionId, {
+            role: 'assistant',
+            content: failedContent,
+            sources: sources.length > 0 ? sources : undefined,
+          });
+        } catch (persistErr) {
+          const persistMsg =
+            persistErr instanceof Error ? persistErr.message : String(persistErr);
+          this.logger.error(
+            `Failed to persist partial assistant message session=${sessionId}: ${persistMsg}`,
+          );
+        }
       }
 
       send('error', message);

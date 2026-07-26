@@ -1,10 +1,11 @@
+import { ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OpenAIEmbeddings } from '@langchain/openai';
 
 export function createEmbeddings(config: ConfigService): OpenAIEmbeddings {
   const apiKey = config.get<string>('AI_API_KEY');
   if (!apiKey) {
-    throw new Error('AI_API_KEY is not configured');
+    throw new ServiceUnavailableException('AI_API_KEY is not configured');
   }
 
   const model = config.get<string>('AI_EMBEDDING_MODEL', 'text-embedding-v3');

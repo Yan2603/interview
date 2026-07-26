@@ -39,13 +39,14 @@ services:
       postgres:
         condition: service_healthy
       milvus:
-        condition: service_started
+        condition: service_healthy
     networks:
       - interview-net
 
   mongo:
     image: docker.m.daocloud.io/library/mongo:7
     restart: unless-stopped
+    # 生产仅内网访问（app → mongo:27017）；本机端口见 docker-compose.dev.yml
     volumes:
       - mongo-data:/data/db
     healthcheck:
@@ -63,8 +64,7 @@ services:
       POSTGRES_USER: interview
       POSTGRES_PASSWORD: interview
       POSTGRES_DB: interview
-    ports:
-      - "5432:5432"
+    # 生产仅内网访问；本机端口见 docker-compose.dev.yml
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -75,7 +75,7 @@ services:
     networks:
       - interview-net
 
-  # RAG vector store (dev: docker compose up -d postgres etcd minio milvus)
+  # RAG vector store（生产仅内网；本机依赖请用 docker-compose.dev.yml）
   etcd:
     image: quay.m.daocloud.io/coreos/etcd:v3.5.14
     restart: unless-stopped
@@ -130,8 +130,7 @@ services:
       start_period: 90s
       timeout: 20s
       retries: 3
-    ports:
-      - "19530:19530"
+    # 生产不映射宿主机端口；本机 19530 见 docker-compose.dev.yml
     depends_on:
       - etcd
       - minio

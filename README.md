@@ -12,21 +12,27 @@
 
 ```bash
 pnpm install           # 若提示 ignored builds，已在 pnpm-workspace.yaml 配置 allowBuilds
-cp .env.example .env   # 配置 MONGODB_URI、AI_API_KEY
+cp .env.example .env   # 配置 MONGODB_URI、AI_API_KEY、DATABASE_URL、MILVUS_URI 等
 
-# 需本地 MongoDB 运行中
+# 用 Docker 起依赖（映射到本机端口，供 pnpm 连接 localhost）
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d mongo postgres etcd minio milvus
+
 pnpm dev               # 前端 :5173，后端 :3000
 ```
+
+本机连接地址（与 `.env.example` 一致）：Mongo `localhost:27017`、Postgres `localhost:5432`、Milvus `localhost:19530`。
 
 ## 生产部署（云服务器）
 
 ```bash
-cp .env.example .env   # 填写 AI_API_KEY 等（MONGODB_URI 无需改，compose 会注入 mongo 服务地址）
+cp .env.example .env   # 填写 AI_API_KEY 等（MONGODB_URI / DATABASE_URL / MILVUS_URI 由 compose 注入，无需改成 localhost）
 docker compose up -d --build
 # 访问 http://<server-ip>  （Nginx :80 反代 /api 到后端）
 ```
 
-Docker 内 MongoDB 使用 compose 服务名 `mongo`，**不要**在 `.env` 里写 `host.docker.internal`（Linux 云服务器无法解析该域名）。
+生产 **不要** 带上 `docker-compose.dev.yml`，否则会把 Mongo/Postgres/Milvus 端口暴露到宿主机。
+
+Docker 内服务互连使用 compose 服务名（`mongo` / `postgres` / `milvus`），**不要**在生产 `.env` 里写 `host.docker.internal`（Linux 云服务器无法解析该域名）。
 
 ### 自动部署（GitHub Actions）
 

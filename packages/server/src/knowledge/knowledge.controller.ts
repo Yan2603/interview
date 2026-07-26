@@ -65,7 +65,14 @@ export class KnowledgeController {
     await this.service.removeDocument(id);
   }
 
+  @Get('questions/index-status')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  questionIndexStatus() {
+    return this.questionIndexer.getIndexStatus();
+  }
+
   @Post('reindex/questions')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   reindexQuestions() {
     return this.questionIndexer.reindexAll();
   }

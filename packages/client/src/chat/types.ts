@@ -38,3 +38,30 @@ export type SseEvent =
   | { event: 'sources'; data: ChatSourceRef[] }
   | { event: 'done'; data: '' }
   | { event: 'error'; data: string };
+
+export type QuestionIndexChunk = {
+  chunkIndex: number;
+  text: string;
+  title?: string;
+};
+
+export type QuestionIndexStatusItem = {
+  questionId: string;
+  title: string;
+  categorySlug: string;
+  indexed: boolean;
+  chunkCount: number;
+  chunks: QuestionIndexChunk[];
+  orphan: boolean;
+};
+
+export type QuestionIndexStatusResponse = {
+  summary: {
+    totalQuestions: number;
+    indexed: number;
+    notIndexed: number;
+    orphanSources: number;
+    totalChunks: number;
+  };
+  items: QuestionIndexStatusItem[];
+};

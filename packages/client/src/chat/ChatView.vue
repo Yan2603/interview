@@ -6,7 +6,6 @@ import { getErrorMessage } from '../utils/error';
 import SessionList from './components/SessionList.vue';
 import MessageList from './components/MessageList.vue';
 import Composer from './components/Composer.vue';
-import KnowledgePanel from './components/KnowledgePanel.vue';
 import { streamChatMessage } from './streamMessage';
 import type { ChatMessage, ChatSession, ChatSourceRef } from './types';
 
@@ -24,7 +23,9 @@ function isSoftNotice(text: string) {
 }
 
 function mapStreamError(raw: string): string {
-  if (raw.includes('503')) return 'AI 服务暂不可用，请稍后重试';
+  if (raw.includes('503') || raw.includes('AI_API_KEY')) {
+    return 'AI 服务暂不可用，请稍后重试';
+  }
   if (raw.startsWith('HTTP ')) return `请求失败（${raw.replace('HTTP ', '')}）`;
   return raw || '发送失败';
 }
@@ -100,11 +101,19 @@ function tempId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function patchAssistant(assistantId: string, patch: Partial<ChatMessage>) {
+  const idx = messages.value.findIndex((m) => m.id === assistantId);
+  if (idx < 0) return;
+  const current = messages.value[idx];
+  messages.value[idx] = { ...current, ...patch };
+}
+
 async function sendMessage(content: string) {
   const sessionId = activeId.value;
   if (!sessionId || sending.value) return;
 
   const now = new Date().toISOString();
+  const assistantId = tempId('assistant');
   const userMsg: ChatMessage = {
     id: tempId('user'),
     role: 'user',
@@ -112,7 +121,7 @@ async function sendMessage(content: string) {
     createdAt: now,
   };
   const assistantMsg: ChatMessage = {
-    id: tempId('assistant'),
+    id: assistantId,
     role: 'assistant',
     content: '',
     sources: null,
@@ -121,49 +130,48 @@ async function sendMessage(content: string) {
   messages.value = [...messages.value, userMsg, assistantMsg];
   sending.value = true;
 
-  const assistantIndex = messages.value.length - 1;
-
-  await streamChatMessage(sessionId, content, {
-    onToken: (token) => {
-      const current = messages.value[assistantIndex];
-      if (!current) return;
-      messages.value[assistantIndex] = { ...current, content: current.content + token };
-    },
-    onSources: (sources: ChatSourceRef[]) => {
-      const current = messages.value[assistantIndex];
-      if (!current) return;
-      messages.value[assistantIndex] = { ...current, sources };
-    },
-    onDone: () => {
-      sending.value = false;
-      const current = messages.value[assistantIndex];
-      if (current && isSoftNotice(current.content)) {
-        /* 未命中仅展示文案，不弹错 */
-      }
-      void refreshSessionTitle(sessionId);
-    },
-    onError: (errMsg) => {
-      sending.value = false;
-      if (isSoftNotice(errMsg)) return;
-      message.error(mapStreamError(errMsg));
-    },
-  });
-
-  sending.value = false;
+  try {
+    await streamChatMessage(sessionId, content, {
+      onToken: (token) => {
+        const current = messages.value.find((m) => m.id === assistantId);
+        if (!current) return;
+        patchAssistant(assistantId, { content: current.content + token });
+      },
+      onSources: (sources: ChatSourceRef[]) => {
+        patchAssistant(assistantId, { sources });
+      },
+      onDone: () => {
+        /* reload in finally */
+      },
+      onError: (errMsg) => {
+        if (isSoftNotice(errMsg)) return;
+        message.error(mapStreamError(errMsg));
+      },
+    });
+  } finally {
+    sending.value = false;
+    // Always sync from server after stream ends (even if `done` event was missed).
+    await reloadSessionMessages(sessionId);
+  }
 }
 
-async function refreshSessionTitle(sessionId: string) {
+async function reloadSessionMessages(sessionId: string) {
   try {
     const session = await api.getChatSession(sessionId);
     const idx = sessions.value.findIndex((s) => s.id === sessionId);
     if (idx >= 0) {
-      sessions.value[idx] = { ...sessions.value[idx], title: session.title, updatedAt: session.updatedAt };
+      sessions.value[idx] = {
+        ...sessions.value[idx],
+        title: session.title,
+        updatedAt: session.updatedAt,
+      };
     }
-    if (session.messages?.length) {
-      messages.value = session.messages;
+    // Avoid clobbering another session's messages if the user switched mid-stream.
+    if (activeId.value === sessionId) {
+      messages.value = session.messages ?? [];
     }
   } catch {
-    /* ignore title refresh errors */
+    /* ignore refresh errors; optimistic messages remain */
   }
 }
 
@@ -186,25 +194,24 @@ onMounted(() => {
     </aside>
 
     <section class="pane-center">
-      <a-spin :spinning="messagesLoading" class="center-spin">
+      <div class="messages-wrap">
+        <div v-if="messagesLoading" class="messages-loading">
+          <a-spin />
+        </div>
         <MessageList :messages="messages" :streaming="sending" />
-      </a-spin>
+      </div>
       <Composer :disabled="composerDisabled" :loading="sending" @send="sendMessage" />
     </section>
-
-    <aside class="pane-right">
-      <KnowledgePanel />
-    </aside>
   </div>
 </template>
 
 <style scoped>
 .chat-view {
   display: flex;
-  height: calc(100vh - 48px);
-  margin: -24px;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
   background: #fff;
-  border-top: 1px solid #f0f0f0;
   overflow: hidden;
 }
 
@@ -212,6 +219,7 @@ onMounted(() => {
   width: 240px;
   flex-shrink: 0;
   min-height: 0;
+  overflow: hidden;
 }
 
 .pane-center {
@@ -220,27 +228,25 @@ onMounted(() => {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-}
-
-.center-spin {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
   overflow: hidden;
 }
 
-.center-spin :deep(.ant-spin-container) {
-  flex: 1;
+.messages-wrap {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  height: 100%;
 }
 
-.pane-right {
-  width: 280px;
-  flex-shrink: 0;
-  min-height: 0;
+.messages-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.55);
 }
 </style>

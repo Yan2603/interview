@@ -17,11 +17,19 @@ async function scrollToBottom() {
 }
 
 watch(
-  () => [props.messages.length, props.messages[props.messages.length - 1]?.content],
+  () => {
+    const last = props.messages[props.messages.length - 1];
+    return [
+      props.messages.length,
+      last?.content,
+      last?.sources?.length ?? 0,
+      props.streaming,
+    ];
+  },
   () => {
     void scrollToBottom();
   },
-  { flush: 'post' },
+  { flush: 'post', immediate: true },
 );
 
 function documentSources(sources: ChatSourceRef[] | null | undefined) {
@@ -38,8 +46,8 @@ function questionSources(sources: ChatSourceRef[] | null | undefined) {
   <div ref="listRef" class="message-list">
     <a-empty v-if="messages.length === 0" description="选择或新建会话后开始提问" />
     <div
-      v-for="msg in messages"
-      :key="msg.id"
+      v-for="(msg, index) in messages"
+      :key="msg.id || `msg-${index}`"
       class="message-row"
       :class="msg.role"
     >
@@ -76,16 +84,22 @@ function questionSources(sources: ChatSourceRef[] | null | undefined) {
 
 <style scoped>
 .message-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
+  flex: 1 1 0;
   min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 16px 16px 28px;
   background: #fff;
+  box-sizing: border-box;
 }
 
 .message-row {
   display: flex;
   margin-bottom: 16px;
+}
+
+.message-row:last-child {
+  margin-bottom: 8px;
 }
 
 .message-row.user {

@@ -73,6 +73,9 @@ const emit = defineEmits<{
   list-style: none;
   margin: 0;
   padding: 8px;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 

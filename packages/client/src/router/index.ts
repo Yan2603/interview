@@ -45,6 +45,24 @@ const router = createRouter({
       component: () => import('../chat/ChatView.vue'),
       meta: { title: 'RAG 聊天' },
     },
+    {
+      path: '/knowledge',
+      component: () => import('../knowledge/KnowledgeLayout.vue'),
+      meta: { title: '知识库管理' },
+      redirect: '/knowledge/documents',
+      children: [
+        {
+          path: 'documents',
+          component: () => import('../knowledge/KnowledgeDocumentsView.vue'),
+          meta: { title: '文档知识库' },
+        },
+        {
+          path: 'questions',
+          component: () => import('../knowledge/KnowledgeQuestionsIndexView.vue'),
+          meta: { title: '题目索引对照' },
+        },
+      ],
+    },
   ],
 });
 

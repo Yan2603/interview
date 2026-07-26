@@ -1,0 +1,20 @@
+# 本地开发覆盖：把依赖映射到宿主机，供 pnpm dev 使用 localhost。
+# 用法（不会用于生产纯 docker compose up）：
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d mongo postgres etcd minio milvus
+#
+# 生产部署请只使用：
+#   docker compose up -d --build
+# （不要带本文件，以免把数据库端口暴露到公网）
+
+services:
+  mongo:
+    ports:
+      - "27017:27017"
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  milvus:
+    ports:
+      - "19530:19530"
