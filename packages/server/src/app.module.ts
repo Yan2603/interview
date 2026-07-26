@@ -14,6 +14,7 @@ import { QuestionsModule } from './questions/questions.module';
 import { EventsModule } from './events/events.module';
 import { AiModule } from './ai/ai.module';
 import { RagModule } from './rag/rag.module';
+import { KnowledgeModule } from './knowledge/knowledge.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { SeedModule } from './seed/seed.module';
 import { HealthModule } from './health/health.module';
@@ -89,6 +90,7 @@ const rootEnvPath = join(__dirname, '..', '..', '..', '.env');
     EventsModule,
     AiModule,
     RagModule,
+    KnowledgeModule,
     DashboardModule,
     SeedModule,
     UploadsModule,
