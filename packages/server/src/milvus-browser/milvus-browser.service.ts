@@ -6,7 +6,10 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Milvus } from '@langchain/community/vectorstores/milvus';
 import { DataType, ErrorCode, MilvusClient } from '@zilliz/milvus2-sdk-node';
+import { createEmbeddings } from '../rag/embeddings.factory';
+import { RAG_COLLECTION_NAME } from '../rag/milvus.store';
 import { mapEntityRow } from './vector-display';
 import type {
   CollectionSchemaView,
@@ -364,5 +367,35 @@ export class MilvusBrowserService {
 
       return { rows };
     });
+  }
+
+  async search(name: string, input: { query: string; topK?: number }) {
+    if (name !== RAG_COLLECTION_NAME) {
+      throw new BadRequestException(
+        `自然语言 Search 仅支持 collection「${RAG_COLLECTION_NAME}」`,
+      );
+    }
+    const q = (input.query ?? '').trim();
+    if (!q) throw new BadRequestException('query 不能为空');
+    const topK = Math.min(Math.max(input.topK ?? 6, 1), 50);
+
+    try {
+      const embeddings = createEmbeddings(this.config);
+      const url = this.config.get<string>('MILVUS_URI', 'http://localhost:19530');
+      const store = await Milvus.fromExistingCollection(embeddings, {
+        collectionName: RAG_COLLECTION_NAME,
+        url,
+      });
+      const results = await store.similaritySearchWithScore(q, topK);
+      return {
+        rows: results.map(([doc, score]) => ({
+          text: doc.pageContent,
+          score,
+          ...doc.metadata,
+        })),
+      };
+    } catch (err) {
+      this.rethrow(err);
+    }
   }
 }

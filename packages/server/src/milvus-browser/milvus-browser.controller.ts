@@ -7,6 +7,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { MilvusBrowserService } from './milvus-browser.service';
 import { clampEntityLimit } from './vector-display';
 
@@ -49,6 +50,19 @@ export class MilvusBrowserController {
       outputFields: body.outputFields,
       limit: clampEntityLimit(body.limit),
       fullVector: false,
+    });
+  }
+
+  @Post('collections/:name/search')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  search(
+    @Param('name') name: string,
+    @Body() body: { query?: string; topK?: number },
+  ) {
+    return this.service.search(name, {
+      query: body?.query ?? '',
+      topK: body?.topK,
     });
   }
 }
