@@ -7,7 +7,13 @@ export default defineConfig({
     port: 5173,
     host: '0.0.0.0',
     proxy: {
-      '/api': { target: 'http://localhost:3000', changeOrigin: true },
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        // Keep SSE streams open; default proxy timeouts can cut chat mid-flight.
+        timeout: 0,
+        proxyTimeout: 0,
+      },
       '/uploads': { target: 'http://localhost:3000', changeOrigin: true },
     },
   },

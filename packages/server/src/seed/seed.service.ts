@@ -112,10 +112,12 @@ export class SeedService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    let seededQuestions = false;
     const categoryCount = await this.categoryModel.countDocuments();
     if (categoryCount === 0) {
       await this.categoryModel.insertMany(SEED_CATEGORIES);
       await this.questionModel.insertMany(SEED_QUESTIONS);
+      seededQuestions = true;
       this.logger.log(
         `Initial seed created: ${SEED_CATEGORIES.length} categories, ${SEED_QUESTIONS.length} questions`,
       );
@@ -147,6 +149,14 @@ export class SeedService implements OnModuleInit {
         names.map((name, index) => ({ name, order: index + 1 })),
       );
       this.logger.log(`Initial companies created: ${names.length} companies`);
+    }
+
+    // Full vector reindex is manual (知识库管理页 / POST /api/knowledge/reindex/questions).
+    // Incremental indexing still runs on later question create/update via QuestionsController.
+    if (seededQuestions) {
+      this.logger.log(
+        'Sample questions seeded. Run 题库全量重建 on 知识库管理页 to index them into Milvus.',
+      );
     }
   }
 }

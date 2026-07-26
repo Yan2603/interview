@@ -12,3 +12,6 @@ logs/
 uploads/*
 !uploads/.gitkeep
 
+.claude/
+.cursor/
+.superpowers/

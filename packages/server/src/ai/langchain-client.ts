@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ChatOpenAI } from '@langchain/openai';
 
@@ -15,7 +15,7 @@ export class LangchainClient {
     const apiKey = this.config.get<string>('AI_API_KEY');
     if (!apiKey) {
       this.logger.error('AI_API_KEY is not configured');
-      throw new Error('AI_API_KEY is not configured');
+      throw new ServiceUnavailableException('AI_API_KEY is not configured');
     }
 
     const model = this.config.get<string>('AI_MODEL', 'qwen-max');
@@ -66,5 +66,51 @@ export class LangchainClient {
     }
 
     throw lastError;
+  }
+
+  async *stream(
+    system: string,
+    messages: Array<{ role: 'human' | 'assistant' | 'user'; content: string }>,
+  ): AsyncGenerator<string> {
+    const model = this.config.get<string>('AI_MODEL', 'qwen-max');
+    this.logger.log(`AI stream start model=${model} messages=${messages.length}`);
+
+    const start = Date.now();
+    try {
+      const llmStream = await this.getLlm().stream([
+        { role: 'system', content: system },
+        ...messages,
+      ]);
+
+      for await (const chunk of llmStream) {
+        const content = chunk.content;
+        let text = '';
+        if (typeof content === 'string') {
+          text = content;
+        } else if (Array.isArray(content)) {
+          text = content
+            .map((part) => {
+              if (typeof part === 'string') return part;
+              if (
+                part &&
+                typeof part === 'object' &&
+                'text' in part &&
+                typeof (part as { text: unknown }).text === 'string'
+              ) {
+                return (part as { text: string }).text;
+              }
+              return '';
+            })
+            .join('');
+        }
+        if (text) yield text;
+      }
+
+      this.logger.log(`AI stream ok ${Date.now() - start}ms`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`AI stream failed ${Date.now() - start}ms: ${message}`);
+      throw err instanceof Error ? err : new Error(message);
+    }
   }
 }

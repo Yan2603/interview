@@ -23,8 +23,29 @@ const mainSelectedKeys = computed(() => {
   if (route.path.startsWith('/questions')) return ['questions'];
   if (route.path.startsWith('/calendar')) return ['calendar'];
   if (route.path.startsWith('/laser')) return ['laser'];
+  if (route.path.startsWith('/chat')) return ['chat'];
+  if (route.path.startsWith('/knowledge/questions')) return ['knowledge-questions'];
+  if (route.path.startsWith('/knowledge')) return ['knowledge-documents'];
   return ['dashboard'];
 });
+
+const openKeys = ref<string[]>([]);
+
+const siderOpenKeys = computed({
+  get() {
+    const keys = [...openKeys.value];
+    if (route.path.startsWith('/knowledge') && !keys.includes('knowledge')) {
+      keys.push('knowledge');
+    }
+    return keys;
+  },
+  set(keys: string[]) {
+    openKeys.value = keys;
+  },
+});
+
+/** 聊天页自带内层滚动，右侧 content 不再二次滚动 */
+const isChatRoute = computed(() => route.path.startsWith('/chat'));
 
 const categorySelectedKeys = computed(() => {
   const cat = route.query.category as string | undefined;
@@ -99,111 +120,151 @@ async function removeCategory(cat: Category) {
 
 <template>
   <div class="app-layout">
-    <a-layout style="min-height: 100vh">
-    <a-layout-sider width="220" theme="light" style="border-right: 1px solid #f0f0f0">
-      <div class="logo">
-        <img src="/favicon.svg" alt="" class="logo-icon" />
-        <span class="logo-text">面试驾驶舱</span>
-      </div>
-      <a-menu
-        mode="inline"
-        :selected-keys="[...mainSelectedKeys, ...categorySelectedKeys]"
-        style="border: none"
-      >
-        <a-menu-item key="dashboard">
-          <router-link to="/">概览</router-link>
-        </a-menu-item>
-        <a-menu-item key="questions">
-          <router-link to="/questions">题库</router-link>
-        </a-menu-item>
-        <a-menu-item key="calendar">
-          <router-link to="/calendar">日历</router-link>
-        </a-menu-item>
-        <a-menu-item key="laser">
-          <router-link to="/laser">激光画板</router-link>
-        </a-menu-item>
-
-        <a-menu-divider />
-
-        <a-menu-item-group>
-          <template #title>
-            <span class="category-group-title">
-              分类
-              <a-button type="link" size="small" class="add-category-btn" @click.stop="openCategoryModal">
-                + 添加
-              </a-button>
-            </span>
-          </template>
-          <a-menu-item
-            v-for="cat in categories"
-            :key="`cat-${cat.slug}`"
-            @click="goCategory(cat.slug)"
+    <a-layout class="app-shell">
+      <a-layout-sider width="220" theme="light" class="app-sider">
+        <div class="logo">
+          <img src="/favicon.svg" alt="" class="logo-icon" />
+          <span class="logo-text">面试驾驶舱</span>
+        </div>
+        <div class="sider-scroll">
+          <a-menu
+            mode="inline"
+            :selected-keys="[...mainSelectedKeys, ...categorySelectedKeys]"
+            v-model:open-keys="siderOpenKeys"
+            style="border: none"
           >
-            <span class="category-item">
-              <span class="category-name">{{ cat.name }}</span>
-              <span class="category-actions" @click.stop>
-                <span
-                  class="category-edit"
-                  title="编辑分类"
-                  @click="openEditCategoryModal(cat, $event)"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                      d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92 2.83H5v-.92l9.06-9.06.92.92L5.92 20.08zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
-                    />
-                  </svg>
+            <a-menu-item key="dashboard">
+              <router-link to="/">概览</router-link>
+            </a-menu-item>
+            <a-menu-item key="questions">
+              <router-link to="/questions">题库</router-link>
+            </a-menu-item>
+            <a-menu-item key="calendar">
+              <router-link to="/calendar">日历</router-link>
+            </a-menu-item>
+            <a-menu-item key="laser">
+              <router-link to="/laser">激光画板</router-link>
+            </a-menu-item>
+            <a-menu-item key="chat">
+              <router-link to="/chat">RAG 聊天</router-link>
+            </a-menu-item>
+            <a-sub-menu key="knowledge" title="知识库管理">
+              <a-menu-item key="knowledge-documents">
+                <router-link to="/knowledge/documents">文档知识库</router-link>
+              </a-menu-item>
+              <a-menu-item key="knowledge-questions">
+                <router-link to="/knowledge/questions">题目索引对照</router-link>
+              </a-menu-item>
+            </a-sub-menu>
+
+            <a-menu-divider />
+
+            <a-menu-item-group>
+              <template #title>
+                <span class="category-group-title">
+                  分类
+                  <a-button type="link" size="small" class="add-category-btn" @click.stop="openCategoryModal">
+                    + 添加
+                  </a-button>
                 </span>
-                <a-popconfirm
-                  title="确定删除该分类？"
-                  ok-text="删除"
-                  cancel-text="取消"
-                  @confirm="removeCategory(cat)"
-                >
-                  <span class="category-delete">×</span>
-                </a-popconfirm>
-              </span>
-            </span>
-          </a-menu-item>
-        </a-menu-item-group>
-      </a-menu>
-    </a-layout-sider>
+              </template>
+              <a-menu-item
+                v-for="cat in categories"
+                :key="`cat-${cat.slug}`"
+                @click="goCategory(cat.slug)"
+              >
+                <span class="category-item">
+                  <span class="category-name">{{ cat.name }}</span>
+                  <span class="category-actions" @click.stop>
+                    <span
+                      class="category-edit"
+                      title="编辑分类"
+                      @click="openEditCategoryModal(cat, $event)"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92 2.83H5v-.92l9.06-9.06.92.92L5.92 20.08zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                        />
+                      </svg>
+                    </span>
+                    <a-popconfirm
+                      title="确定删除该分类？"
+                      ok-text="删除"
+                      cancel-text="取消"
+                      @confirm="removeCategory(cat)"
+                    >
+                      <span class="category-delete">×</span>
+                    </a-popconfirm>
+                  </span>
+                </span>
+              </a-menu-item>
+            </a-menu-item-group>
+          </a-menu>
+        </div>
+      </a-layout-sider>
 
-    <a-layout>
-      <a-layout-content class="content">
-        <RouterView />
-      </a-layout-content>
+      <a-layout class="app-main">
+        <a-layout-content class="content" :class="{ 'content--fixed': isChatRoute }">
+          <RouterView />
+        </a-layout-content>
+      </a-layout>
     </a-layout>
-  </a-layout>
 
-  <a-modal
-    v-model:open="categoryModalOpen"
-    :title="isEditingCategory ? '编辑分类' : '添加分类'"
-    :confirm-loading="categorySaving"
-    @ok="submitCategory"
-  >
-    <a-form layout="vertical">
-      <a-form-item label="名称" required>
-        <a-input v-model:value="categoryForm.name" placeholder="如：React" />
-      </a-form-item>
-      <a-form-item
-        v-if="!isEditingCategory"
-        label="标识（slug）"
-        required
-        extra="英文小写，用于 URL 筛选，创建后不可修改"
-      >
-        <a-input v-model:value="categoryForm.slug" placeholder="如：react" />
-      </a-form-item>
-      <a-form-item v-else label="标识（slug）">
-        <a-input :value="categoryForm.slug" disabled />
-      </a-form-item>
-    </a-form>
-  </a-modal>
+    <a-modal
+      v-model:open="categoryModalOpen"
+      :title="isEditingCategory ? '编辑分类' : '添加分类'"
+      :confirm-loading="categorySaving"
+      @ok="submitCategory"
+    >
+      <a-form layout="vertical">
+        <a-form-item label="名称" required>
+          <a-input v-model:value="categoryForm.name" placeholder="如：React" />
+        </a-form-item>
+        <a-form-item
+          v-if="!isEditingCategory"
+          label="标识（slug）"
+          required
+          extra="英文小写，用于 URL 筛选，创建后不可修改"
+        >
+          <a-input v-model:value="categoryForm.slug" placeholder="如：react" />
+        </a-form-item>
+        <a-form-item v-else label="标识（slug）">
+          <a-input :value="categoryForm.slug" disabled />
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
 <style scoped>
+.app-layout {
+  height: 100%;
+  overflow: hidden;
+}
+
+.app-shell {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-sider {
+  height: 100% !important;
+  overflow: hidden !important;
+  border-right: 1px solid #f0f0f0;
+}
+
+.app-sider :deep(.ant-layout-sider-children) {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .logo {
   height: 64px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -224,9 +285,40 @@ async function removeCategory(cat: Category) {
   color: #262626;
 }
 
+.sider-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.app-main {
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .content {
+  height: 100%;
+  min-height: 0;
   padding: 24px;
-  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* 聊天等自带内层滚动的页面：右侧外壳不再滚 */
+.content--fixed {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.content--fixed :deep(> *) {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 a {

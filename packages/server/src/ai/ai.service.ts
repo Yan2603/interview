@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { IndexableQuestion, QuestionIndexerService } from '../knowledge/question-indexer.service';
 import { Question } from '../questions/question.schema';
 import { LangchainClient } from './langchain-client';
 import { getSystemPrompt } from './prompts';
@@ -12,6 +13,7 @@ export class AiService {
   constructor(
     private readonly llm: LangchainClient,
     @InjectModel(Question.name) private questionModel: Model<Question>,
+    private readonly questionIndexer: QuestionIndexerService,
   ) {}
 
   async generateAnswer(questionId: string, mode: 'standard' | 'deep' = 'standard') {
@@ -32,6 +34,7 @@ export class AiService {
       const aiAnswer = await this.llm.invoke(system, userPrompt);
       await this.questionModel.findByIdAndUpdate(questionId, { $set: { aiAnswer } });
       this.logger.log(`generateAnswer saved id=${questionId} answerLen=${aiAnswer.length}`);
+      await this.safeUpsert({ ...question, aiAnswer });
       return { aiAnswer };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'AI request failed';
@@ -40,6 +43,15 @@ export class AiService {
         throw new ServiceUnavailableException('AI_API_KEY is not configured');
       }
       throw new ServiceUnavailableException(message);
+    }
+  }
+
+  private async safeUpsert(question: IndexableQuestion): Promise<void> {
+    try {
+      await this.questionIndexer.upsert(question);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`question index upsert failed id=${String(question._id)}: ${message}`);
     }
   }
 }

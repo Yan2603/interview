@@ -13,12 +13,16 @@ import { CompaniesModule } from './companies/companies.module';
 import { QuestionsModule } from './questions/questions.module';
 import { EventsModule } from './events/events.module';
 import { AiModule } from './ai/ai.module';
+import { RagModule } from './rag/rag.module';
+import { KnowledgeModule } from './knowledge/knowledge.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { SeedModule } from './seed/seed.module';
 import { HealthModule } from './health/health.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { resolveUploadRoot } from './uploads/upload-path';
 import { winstonConfig } from './config/winston.config';
+import { DatabaseModule } from './database/database.module';
+import { ChatModule } from './chat/chat.module';
 
 const isProd = process.env.NODE_ENV === 'production';
 // monorepo 根目录 .env（dev 时 cwd 在 packages/server，不能只用 process.cwd()）
@@ -51,6 +55,7 @@ const rootEnvPath = join(__dirname, '..', '..', '..', '.env');
       },
       inject: [ConfigService],
     }),
+    DatabaseModule,
     ThrottlerModule.forRoot([{
       ttl: 60000,    // 60 秒
       limit: 100,    // 最多 100 次请求
@@ -85,6 +90,9 @@ const rootEnvPath = join(__dirname, '..', '..', '..', '.env');
     QuestionsModule,
     EventsModule,
     AiModule,
+    RagModule,
+    KnowledgeModule,
+    ChatModule,
     DashboardModule,
     SeedModule,
     UploadsModule,
