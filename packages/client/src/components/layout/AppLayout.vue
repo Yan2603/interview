@@ -25,6 +25,7 @@ const mainSelectedKeys = computed(() => {
   if (route.path.startsWith('/laser')) return ['laser'];
   if (route.path.startsWith('/chat')) return ['chat'];
   if (route.path.startsWith('/knowledge/questions')) return ['knowledge-questions'];
+  if (route.path.startsWith('/knowledge/milvus')) return ['knowledge-milvus'];
   if (route.path.startsWith('/knowledge')) return ['knowledge-documents'];
   return ['dashboard'];
 });
@@ -154,6 +155,9 @@ async function removeCategory(cat: Category) {
               </a-menu-item>
               <a-menu-item key="knowledge-questions">
                 <router-link to="/knowledge/questions">题目索引对照</router-link>
+              </a-menu-item>
+              <a-menu-item key="knowledge-milvus">
+                <router-link to="/knowledge/milvus">向量库浏览器</router-link>
               </a-menu-item>
             </a-sub-menu>
 
