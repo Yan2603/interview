@@ -19,6 +19,7 @@ import { HealthModule } from './health/health.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { resolveUploadRoot } from './uploads/upload-path';
 import { winstonConfig } from './config/winston.config';
+import { DatabaseModule } from './database/database.module';
 
 const isProd = process.env.NODE_ENV === 'production';
 // monorepo 根目录 .env（dev 时 cwd 在 packages/server，不能只用 process.cwd()）
@@ -51,6 +52,7 @@ const rootEnvPath = join(__dirname, '..', '..', '..', '.env');
       },
       inject: [ConfigService],
     }),
+    DatabaseModule,
     ThrottlerModule.forRoot([{
       ttl: 60000,    // 60 秒
       limit: 100,    // 最多 100 次请求
