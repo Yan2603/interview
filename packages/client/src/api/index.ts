@@ -5,6 +5,10 @@ import type {
   QuestionIndexStatusResponse,
 } from '../chat/types';
 import type {
+  MilvusCollectionSchema,
+  MilvusCollectionSummary,
+} from '../knowledge/milvus-types';
+import type {
   Category,
   Company,
   DashboardSummary,
@@ -152,6 +156,53 @@ export const api = {
 
   deleteChatSession: (id: string) =>
     http.delete(`/chat/sessions/${id}`).then((r) => r.data),
+
+  listMilvusCollections: () =>
+    http
+      .get<{ items: MilvusCollectionSummary[] }>('/milvus-browser/collections')
+      .then((r) => r.data),
+
+  getMilvusSchema: (name: string) =>
+    http
+      .get<MilvusCollectionSchema>(
+        `/milvus-browser/collections/${encodeURIComponent(name)}/schema`,
+      )
+      .then((r) => r.data),
+
+  listMilvusEntities: (
+    name: string,
+    params: { limit?: number; offset?: number; fullVector?: boolean },
+  ) =>
+    http
+      .get<{ rows: Record<string, unknown>[]; limit: number; offset: number }>(
+        `/milvus-browser/collections/${encodeURIComponent(name)}/entities`,
+        {
+          params: {
+            ...params,
+            fullVector: params.fullVector ? '1' : undefined,
+          },
+        },
+      )
+      .then((r) => r.data),
+
+  queryMilvus: (
+    name: string,
+    body: { expr: string; outputFields?: string[]; limit?: number },
+  ) =>
+    http
+      .post<{ rows: Record<string, unknown>[] }>(
+        `/milvus-browser/collections/${encodeURIComponent(name)}/query`,
+        body,
+      )
+      .then((r) => r.data),
+
+  searchMilvus: (name: string, body: { query: string; topK?: number }) =>
+    http
+      .post<{ rows: Record<string, unknown>[] }>(
+        `/milvus-browser/collections/${encodeURIComponent(name)}/search`,
+        body,
+      )
+      .then((r) => r.data),
 };
 
 export const MASTERY_LABELS: Record<Mastery, string> = {

@@ -6,12 +6,16 @@ const route = useRoute();
 
 const pageTitle = computed(() => {
   if (route.path.startsWith('/knowledge/questions')) return '题目索引对照';
+  if (route.path.startsWith('/knowledge/milvus')) return '向量库浏览器';
   return '文档知识库';
 });
 
 const pageSubtitle = computed(() => {
   if (route.path.startsWith('/knowledge/questions')) {
     return '查看题目是否已入向量索引，并手动全量重建题库。';
+  }
+  if (route.path.startsWith('/knowledge/milvus')) {
+    return '只读查看 Milvus collection、schema、实体与表达式查询（无需 Attu）。';
   }
   return '上传并管理文档知识库，供 RAG 聊天检索。';
 });

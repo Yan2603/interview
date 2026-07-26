@@ -61,6 +61,11 @@ const router = createRouter({
           component: () => import('../knowledge/KnowledgeQuestionsIndexView.vue'),
           meta: { title: '题目索引对照' },
         },
+        {
+          path: 'milvus',
+          component: () => import('../knowledge/MilvusBrowserView.vue'),
+          meta: { title: '向量库浏览器' },
+        },
       ],
     },
   ],
