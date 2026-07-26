@@ -40,6 +40,11 @@ const router = createRouter({
       component: () => import('../laser/LaserEditorView.vue'),
       meta: { title: '激光画板' },
     },
+    {
+      path: '/chat',
+      component: () => import('../chat/ChatView.vue'),
+      meta: { title: 'RAG 聊天' },
+    },
   ],
 });
 

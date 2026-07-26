@@ -23,6 +23,7 @@ const mainSelectedKeys = computed(() => {
   if (route.path.startsWith('/questions')) return ['questions'];
   if (route.path.startsWith('/calendar')) return ['calendar'];
   if (route.path.startsWith('/laser')) return ['laser'];
+  if (route.path.startsWith('/chat')) return ['chat'];
   return ['dashboard'];
 });
 
@@ -121,6 +122,9 @@ async function removeCategory(cat: Category) {
         </a-menu-item>
         <a-menu-item key="laser">
           <router-link to="/laser">激光画板</router-link>
+        </a-menu-item>
+        <a-menu-item key="chat">
+          <router-link to="/chat">RAG 聊天</router-link>
         </a-menu-item>
 
         <a-menu-divider />
