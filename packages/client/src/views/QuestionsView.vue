@@ -426,7 +426,7 @@ async function removeQuestion(record: Question) {
         { title: '分类', dataIndex: 'categorySlug', key: 'categorySlug', width: 96 },
         { title: '公司', key: 'companies', width: 140, ellipsis: true },
         { title: '掌握度', key: 'mastery', width: 88 },
-        { title: 'AI', key: 'ai', width: 168 },
+        { title: 'AI', key: 'ai', width: 200 },
         { title: '标签', key: 'tags', width: 140, ellipsis: true },
         { title: '操作', key: 'actions', width: 112 },
       ]"
@@ -462,15 +462,16 @@ async function removeQuestion(record: Question) {
           </a-tag>
         </template>
         <template v-else-if="column.key === 'ai'">
-          <a-space @click.stop>
-            <a-tag
-              v-if="hasAiAnswer(record)"
-              color="success"
-              class="ai-tag"
-              @click="openAiPreview(record, $event)"
-            >
-              已有 AI 答案
-            </a-tag>
+          <a-space :size="4" @click.stop class="ai-cell">
+            <a-tooltip v-if="hasAiAnswer(record)" title="点击查看 AI 答案">
+              <a-tag
+                color="success"
+                class="ai-tag"
+                @click="openAiPreview(record, $event)"
+              >
+                已生成
+              </a-tag>
+            </a-tooltip>
             <a-button
               size="small"
               :type="hasAiAnswer(record) ? 'default' : 'primary'"
@@ -709,8 +710,13 @@ async function removeQuestion(record: Question) {
   flex-shrink: 0;
 }
 
+.ai-cell {
+  flex-wrap: nowrap;
+}
+
 .ai-tag {
   cursor: pointer;
+  margin-inline-end: 0;
 }
 
 .markdown :deep(pre) {
