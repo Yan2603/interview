@@ -1,4 +1,3 @@
-import axios from 'axios';
 import type {
   ChatSession,
   KnowledgeDocument,
@@ -19,13 +18,19 @@ import type {
   Question,
   Tag,
 } from '../types';
-
-const http = axios.create({
-  baseURL: '/api',
-  timeout: 300000, // AI 作答可能超过 60s
-});
+import { http, refreshTokensRequest, type AuthTokensResponse } from './http';
 
 export const api = {
+  login: (data: { username: string; password: string }) =>
+    http.post<AuthTokensResponse>('/auth/login', data).then((r) => r.data),
+
+  refresh: (refreshToken: string) => refreshTokensRequest(refreshToken),
+
+  logout: (refreshToken: string) =>
+    http.post('/auth/logout', { refreshToken }).then((r) => r.data),
+
+  me: () => http.get<{ id: string; username: string }>('/auth/me').then((r) => r.data),
+
   getDashboard: () => http.get<DashboardSummary>('/dashboard').then((r) => r.data),
 
   getCategories: () => http.get<Category[]>('/categories').then((r) => r.data),
