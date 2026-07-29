@@ -416,17 +416,19 @@ async function removeQuestion(record: Question) {
     </div>
 
     <a-table
+      class="questions-table"
       :loading="loading"
       :data-source="questions"
+      table-layout="fixed"
       :columns="[
-        { title: '序号', key: 'index', width: 64, align: 'center' },
-        { title: '题目', dataIndex: 'title', key: 'title' },
-        { title: '分类', dataIndex: 'categorySlug', key: 'categorySlug', width: 100 },
-        { title: '公司', key: 'companies', width: 160 },
-        { title: '掌握度', key: 'mastery', width: 100 },
-        { title: 'AI', key: 'ai', width: 180 },
-        { title: '标签', key: 'tags', width: 160 },
-        { title: '操作', key: 'actions', width: 120 },
+        { title: '序号', key: 'index', width: 60, align: 'center' },
+        { title: '题目', dataIndex: 'title', key: 'title', ellipsis: true },
+        { title: '分类', dataIndex: 'categorySlug', key: 'categorySlug', width: 96 },
+        { title: '公司', key: 'companies', width: 140, ellipsis: true },
+        { title: '掌握度', key: 'mastery', width: 88 },
+        { title: 'AI', key: 'ai', width: 168 },
+        { title: '标签', key: 'tags', width: 140, ellipsis: true },
+        { title: '操作', key: 'actions', width: 112 },
       ]"
       row-key="_id"
       :pagination="tablePagination"
@@ -438,15 +440,21 @@ async function removeQuestion(record: Question) {
           {{ (tablePagination.current - 1) * tablePagination.pageSize + index + 1 }}
         </template>
         <template v-else-if="column.key === 'title'">
-          <a class="question-title-link" @click="openDetail(record._id, $event)">
-            {{ record.title }}
-          </a>
+          <a-tooltip :title="record.title">
+            <a class="question-title-link" @click="openDetail(record._id, $event)">
+              {{ record.title }}
+            </a>
+          </a-tooltip>
         </template>
         <template v-else-if="column.key === 'categorySlug'">
           {{ categoryLabel(record.categorySlug) }}
         </template>
         <template v-else-if="column.key === 'companies'">
-          <a-tag v-for="company in record.companies" :key="company" color="blue">{{ company }}</a-tag>
+          <a-tooltip v-if="record.companies?.length" :title="record.companies.join('、')">
+            <div class="cell-tags">
+              <a-tag v-for="company in record.companies" :key="company" color="blue">{{ company }}</a-tag>
+            </div>
+          </a-tooltip>
         </template>
         <template v-else-if="column.key === 'mastery'">
           <a-tag :color="MASTERY_COLORS[record.mastery as Mastery]">
@@ -474,7 +482,11 @@ async function removeQuestion(record: Question) {
           </a-space>
         </template>
         <template v-else-if="column.key === 'tags'">
-          <a-tag v-for="tag in record.tags" :key="tag">{{ tag }}</a-tag>
+          <a-tooltip v-if="record.tags?.length" :title="record.tags.join('、')">
+            <div class="cell-tags">
+              <a-tag v-for="tag in record.tags" :key="tag">{{ tag }}</a-tag>
+            </div>
+          </a-tooltip>
         </template>
         <template v-else-if="column.key === 'actions'">
           <a-space @click.stop>
@@ -667,13 +679,34 @@ async function removeQuestion(record: Question) {
   margin-bottom: 16px;
 }
 
+.questions-table :deep(.ant-table-tbody > tr > td) {
+  vertical-align: middle;
+}
+
 .question-title-link {
+  display: block;
+  overflow: hidden;
   color: #1677ff;
   font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .question-title-link:hover {
   color: #4096ff;
+}
+
+.cell-tags {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.cell-tags :deep(.ant-tag) {
+  margin-inline-end: 4px;
+  flex-shrink: 0;
 }
 
 .ai-tag {
