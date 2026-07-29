@@ -79,15 +79,11 @@ export class AuthService {
 
   async refresh(refreshToken: string): Promise<AuthTokens> {
     const tokenHash = this.hashToken(refreshToken);
-    const existing = await this.refreshModel.findOne({ tokenHash });
+    // Atomic consume: only one concurrent refresh wins the tokenHash.
+    const existing = await this.refreshModel.findOneAndDelete({ tokenHash });
     if (!existing || existing.expiresAt.getTime() <= Date.now()) {
-      if (existing) {
-        await this.refreshModel.deleteOne({ _id: existing._id });
-      }
       throw new UnauthorizedException('Invalid refresh token');
     }
-
-    await this.refreshModel.deleteOne({ _id: existing._id });
 
     const user = await this.userModel.findOne({ _id: existing.userId });
     if (!user) {

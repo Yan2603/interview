@@ -47,9 +47,10 @@ function createRefreshModelMock(store: Map<string, RefreshRecord>) {
       store.set(_id, doc);
       return doc;
     },
-    async findOne(query: { tokenHash?: string }) {
-      for (const doc of store.values()) {
+    async findOneAndDelete(query: { tokenHash?: string }) {
+      for (const [id, doc] of store.entries()) {
         if (query.tokenHash !== undefined && doc.tokenHash === query.tokenHash) {
+          store.delete(id);
           return doc;
         }
       }
@@ -87,7 +88,6 @@ describe('AuthService', () => {
       get: (key: string) => {
         const values: Record<string, string> = {
           JWT_ACCESS_SECRET: 'test-access-secret',
-          JWT_REFRESH_SECRET: 'test-refresh-secret',
           JWT_ACCESS_TTL: '15m',
           JWT_REFRESH_TTL: '7d',
         };
