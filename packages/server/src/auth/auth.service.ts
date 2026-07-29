@@ -95,7 +95,10 @@ export class AuthService {
 
     const accessToken = await this.jwtService.signAsync(
       { sub: user.id, username: user.username },
-      { secret: accessSecret, expiresIn: accessTtl },
+      {
+        secret: accessSecret,
+        expiresIn: accessTtl as `${number}${'s' | 'm' | 'h' | 'd'}`,
+      },
     );
 
     const rawRefresh = randomBytes(48).toString('hex');
