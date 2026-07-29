@@ -1,5 +1,38 @@
+import { refreshTokensRequest } from '../api/http';
+import { runSingleFlightRefresh } from '../auth/refreshQueue';
+import {
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  setTokens,
+} from '../auth/tokenStorage';
 import { parseSseChunk } from './sse';
 import type { ChatSourceRef } from './types';
+
+async function authorizedFetch(
+  input: string,
+  init: RequestInit,
+  retried = false,
+): Promise<Response> {
+  const headers = new Headers(init.headers);
+  const access = getAccessToken();
+  if (access) headers.set('Authorization', `Bearer ${access}`);
+  const response = await fetch(input, { ...init, headers });
+  if (response.status !== 401 || retried) return response;
+  const refresh = getRefreshToken();
+  if (!refresh) {
+    clearTokens();
+    return response;
+  }
+  try {
+    const tokens = await runSingleFlightRefresh(() => refreshTokensRequest(refresh));
+    setTokens(tokens.accessToken, tokens.refreshToken);
+    return authorizedFetch(input, init, true);
+  } catch {
+    clearTokens();
+    return response;
+  }
+}
 
 function dispatchEvent(
   event: ReturnType<typeof parseSseChunk>['events'][number],
@@ -36,7 +69,7 @@ export async function streamChatMessage(
     onError: (msg: string) => void;
   },
 ): Promise<void> {
-  const response = await fetch(`/api/chat/sessions/${sessionId}/messages`, {
+  const response = await authorizedFetch(`/api/chat/sessions/${sessionId}/messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content }),

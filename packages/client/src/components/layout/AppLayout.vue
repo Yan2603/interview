@@ -3,11 +3,13 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter, RouterView } from 'vue-router';
 import { message } from 'ant-design-vue';
 import axios from 'axios';
+import { useAuthStore } from '../../auth/authStore';
 import { useCategories } from '../../composables/useCategories';
 import type { Category } from '../../types';
 
 const route = useRoute();
 const router = useRouter();
+const auth = useAuthStore();
 const { categories, loadCategories, createCategory, updateCategory, deleteCategory } = useCategories();
 
 const categoryModalOpen = ref(false);
@@ -17,7 +19,21 @@ const categorySaving = ref(false);
 
 const isEditingCategory = computed(() => Boolean(editingCategoryId.value));
 
-onMounted(loadCategories);
+onMounted(async () => {
+  await loadCategories();
+  if (auth.isAuthenticated && !auth.user) {
+    try {
+      await auth.fetchMe();
+    } catch {
+      // ignore — interceptor / ensureSession handles session loss
+    }
+  }
+});
+
+async function onLogout() {
+  await auth.logout();
+  router.push('/login');
+}
 
 const mainSelectedKeys = computed(() => {
   if (route.path.startsWith('/questions')) return ['questions'];
@@ -205,6 +221,10 @@ async function removeCategory(cat: Category) {
             </a-menu-item-group>
           </a-menu>
         </div>
+        <div class="sider-footer">
+          <div v-if="auth.user" class="sider-user">{{ auth.user.username }}</div>
+          <a-button type="link" block @click="onLogout">退出登录</a-button>
+        </div>
       </a-layout-sider>
 
       <a-layout class="app-main">
@@ -294,6 +314,23 @@ async function removeCategory(cat: Category) {
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+.sider-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding: 12px 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.sider-user {
+  margin-bottom: 4px;
+  padding: 0 8px;
+  font-size: 13px;
+  color: #595959;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-main {
