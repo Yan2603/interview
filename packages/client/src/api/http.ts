@@ -1,5 +1,6 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { runSingleFlightRefresh } from '../auth/refreshQueue';
+import { handleSessionExpired } from '../auth/sessionExpired';
 import {
   clearTokens,
   getAccessToken,
@@ -28,13 +29,6 @@ export async function refreshTokensRequest(refreshToken: string) {
   return data;
 }
 
-function redirectToLogin() {
-  const redirect = encodeURIComponent(
-    `${window.location.pathname}${window.location.search}${window.location.hash}`,
-  );
-  window.location.assign(`/login?redirect=${redirect}`);
-}
-
 http.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) {
@@ -60,15 +54,13 @@ http.interceptors.response.use(
     }
 
     if (!originalConfig || originalConfig._retry) {
-      clearTokens();
-      redirectToLogin();
+      await handleSessionExpired();
       return Promise.reject(error);
     }
 
     const refresh = getRefreshToken();
     if (!refresh) {
-      clearTokens();
-      redirectToLogin();
+      await handleSessionExpired();
       return Promise.reject(error);
     }
 
@@ -86,8 +78,7 @@ http.interceptors.response.use(
       originalConfig.headers.Authorization = `Bearer ${tokens.accessToken}`;
       return http.request(originalConfig);
     } catch {
-      clearTokens();
-      redirectToLogin();
+      await handleSessionExpired();
       return Promise.reject(error);
     }
   },

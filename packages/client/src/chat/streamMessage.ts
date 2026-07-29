@@ -1,7 +1,7 @@
 import { refreshTokensRequest } from '../api/http';
 import { runSingleFlightRefresh } from '../auth/refreshQueue';
+import { handleSessionExpired } from '../auth/sessionExpired';
 import {
-  clearTokens,
   getAccessToken,
   getRefreshToken,
   setTokens,
@@ -18,10 +18,14 @@ async function authorizedFetch(
   const access = getAccessToken();
   if (access) headers.set('Authorization', `Bearer ${access}`);
   const response = await fetch(input, { ...init, headers });
-  if (response.status !== 401 || retried) return response;
+  if (response.status !== 401) return response;
+  if (retried) {
+    await handleSessionExpired();
+    return response;
+  }
   const refresh = getRefreshToken();
   if (!refresh) {
-    clearTokens();
+    await handleSessionExpired();
     return response;
   }
   try {
@@ -29,7 +33,7 @@ async function authorizedFetch(
     setTokens(tokens.accessToken, tokens.refreshToken);
     return authorizedFetch(input, init, true);
   } catch {
-    clearTokens();
+    await handleSessionExpired();
     return response;
   }
 }
