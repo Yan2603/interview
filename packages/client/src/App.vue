@@ -1,16 +1,25 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useRoute, RouterView } from 'vue-router';
+import { computed, ref } from 'vue';
+import { useRoute, useRouter, RouterView } from 'vue-router';
 import zhCN from 'ant-design-vue/es/locale/zh_CN';
 import AppLayout from './components/layout/AppLayout.vue';
 
 const route = useRoute();
+const router = useRouter();
+
+/** Wait for initial navigation (incl. auth beforeEach) so AppLayout never flashes before /login. */
+const bootReady = ref(false);
+void router.isReady().then(() => {
+  bootReady.value = true;
+});
+
 const isStandalone = computed(() => route.path === '/login');
 </script>
 
 <template>
   <a-config-provider :locale="zhCN">
-    <RouterView v-if="isStandalone" />
+    <div v-if="!bootReady" class="app-boot" aria-busy="true" aria-label="加载中" />
+    <RouterView v-else-if="isStandalone" />
     <AppLayout v-else />
   </a-config-provider>
 </template>
@@ -30,6 +39,11 @@ body {
 
 #app > * {
   height: 100%;
+}
+
+.app-boot {
+  height: 100%;
+  background: #f5f5f5;
 }
 
 /* 全局滚动条：细、浅、hover 才略加深 */

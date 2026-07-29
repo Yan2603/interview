@@ -3,6 +3,7 @@ import { reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { useAuthStore } from '../auth/authStore';
+import { sanitizeRedirect } from '../auth/redirect';
 
 const route = useRoute();
 const router = useRouter();
@@ -23,7 +24,7 @@ async function onSubmit() {
   loading.value = true;
   try {
     await auth.login(form.username.trim(), form.password);
-    await router.replace((route.query.redirect as string) || '/');
+    await router.replace(sanitizeRedirect(route.query.redirect));
   } catch (err: unknown) {
     const apiMessage =
       err &&

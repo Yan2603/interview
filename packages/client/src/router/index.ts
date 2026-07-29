@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { refreshTokensRequest } from '../api/http';
+import { sanitizeRedirect } from '../auth/redirect';
 import { runSingleFlightRefresh } from '../auth/refreshQueue';
 import {
   clearTokens,
@@ -82,11 +83,15 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   if (to.meta.public) {
     if (getAccessToken() || getRefreshToken()) {
-      return { path: (to.query.redirect as string) || '/' };
+      const dest = sanitizeRedirect(to.query.redirect);
+      if (to.path === dest && !to.query.redirect) return true;
+      return dest;
     }
     return true;
   }
+
   if (getAccessToken()) return true;
+
   if (getRefreshToken()) {
     try {
       const tokens = await runSingleFlightRefresh(() =>
@@ -98,7 +103,11 @@ router.beforeEach(async (to) => {
       clearTokens();
     }
   }
-  return { path: '/login', query: { redirect: to.fullPath } };
+
+  return {
+    path: '/login',
+    query: { redirect: sanitizeRedirect(to.fullPath) },
+  };
 });
 
 router.afterEach((to) => {

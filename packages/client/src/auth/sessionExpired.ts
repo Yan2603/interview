@@ -1,10 +1,17 @@
 import { clearTokens } from './tokenStorage';
+import { sanitizeRedirect } from './redirect';
+
+let redirectingToLogin = false;
 
 function redirectToLogin(): void {
-  const redirect = encodeURIComponent(
+  if (redirectingToLogin) return;
+  if (window.location.pathname === '/login') return;
+
+  redirectingToLogin = true;
+  const target = sanitizeRedirect(
     `${window.location.pathname}${window.location.search}${window.location.hash}`,
   );
-  window.location.assign(`/login?redirect=${redirect}`);
+  window.location.assign(`/login?redirect=${encodeURIComponent(target)}`);
 }
 
 /** Clear tokens, reset auth user when Pinia is available, then redirect to login. */
