@@ -1,10 +1,24 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { refreshTokensRequest } from '../api/http';
+import { sanitizeRedirect } from '../auth/redirect';
+import { runSingleFlightRefresh } from '../auth/refreshQueue';
+import {
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  setTokens,
+} from '../auth/tokenStorage';
 
 const APP_TITLE = '面试驾驶舱';
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    {
+      path: '/login',
+      component: () => import('../views/LoginView.vue'),
+      meta: { title: '登录', public: true },
+    },
     {
       path: '/',
       component: () => import('../views/DashboardView.vue'),
@@ -64,6 +78,36 @@ const router = createRouter({
       ],
     },
   ],
+});
+
+router.beforeEach(async (to) => {
+  if (to.meta.public) {
+    if (getAccessToken() || getRefreshToken()) {
+      const dest = sanitizeRedirect(to.query.redirect);
+      if (to.path === dest && !to.query.redirect) return true;
+      return dest;
+    }
+    return true;
+  }
+
+  if (getAccessToken()) return true;
+
+  if (getRefreshToken()) {
+    try {
+      const tokens = await runSingleFlightRefresh(() =>
+        refreshTokensRequest(getRefreshToken()!),
+      );
+      setTokens(tokens.accessToken, tokens.refreshToken);
+      return true;
+    } catch {
+      clearTokens();
+    }
+  }
+
+  return {
+    path: '/login',
+    query: { redirect: sanitizeRedirect(to.fullPath) },
+  };
 });
 
 router.afterEach((to) => {

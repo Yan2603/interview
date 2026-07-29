@@ -2,12 +2,15 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter, RouterView } from 'vue-router';
 import { message } from 'ant-design-vue';
+import { DownOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons-vue';
 import axios from 'axios';
+import { useAuthStore } from '../../auth/authStore';
 import { useCategories } from '../../composables/useCategories';
 import type { Category } from '../../types';
 
 const route = useRoute();
 const router = useRouter();
+const auth = useAuthStore();
 const { categories, loadCategories, createCategory, updateCategory, deleteCategory } = useCategories();
 
 const categoryModalOpen = ref(false);
@@ -17,7 +20,31 @@ const categorySaving = ref(false);
 
 const isEditingCategory = computed(() => Boolean(editingCategoryId.value));
 
-onMounted(loadCategories);
+onMounted(async () => {
+  await loadCategories();
+  if (auth.isAuthenticated && !auth.user) {
+    try {
+      await auth.fetchMe();
+    } catch {
+      // ignore — interceptor / ensureSession handles session loss
+    }
+  }
+});
+
+async function onLogout() {
+  await auth.logout();
+  router.push('/login');
+}
+
+function onUserMenuClick(info: { key: string | number }) {
+  if (info.key === 'logout') {
+    void onLogout();
+  }
+}
+
+function popupContainer() {
+  return document.body;
+}
 
 const mainSelectedKeys = computed(() => {
   if (route.path.startsWith('/questions')) return ['questions'];
@@ -205,6 +232,30 @@ async function removeCategory(cat: Category) {
             </a-menu-item-group>
           </a-menu>
         </div>
+        <div class="sider-footer">
+          <a-dropdown
+            v-if="auth.user"
+            :trigger="['click']"
+            placement="topLeft"
+            :get-popup-container="popupContainer"
+          >
+            <button type="button" class="sider-user" aria-label="用户菜单">
+              <a-avatar :size="32" class="sider-avatar">
+                <template #icon><UserOutlined /></template>
+              </a-avatar>
+              <span class="sider-username">{{ auth.user.username }}</span>
+              <DownOutlined class="sider-user-caret" />
+            </button>
+            <template #overlay>
+              <a-menu @click="onUserMenuClick">
+                <a-menu-item key="logout">
+                  <LogoutOutlined />
+                  退出登录
+                </a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+        </div>
       </a-layout-sider>
 
       <a-layout class="app-main">
@@ -294,6 +345,53 @@ async function removeCategory(cat: Category) {
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+.sider-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding: 12px 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.sider-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  min-width: 0;
+  text-align: left;
+}
+
+.sider-user:hover {
+  background: #f5f5f5;
+}
+
+.sider-avatar {
+  flex-shrink: 0;
+  background: #1677ff;
+}
+
+.sider-username {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: #595959;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sider-user-caret {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: #8c8c8c;
 }
 
 .app-main {

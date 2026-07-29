@@ -7,6 +7,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { WinstonModule } from 'nest-winston';
 import { join } from 'path';
 import { AccessLogMiddleware } from './common/access-log.middleware';
+import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { CategoriesModule } from './categories/categories.module';
 import { TagsModule } from './tags/tags.module';
 import { CompaniesModule } from './companies/companies.module';
@@ -85,6 +87,7 @@ const rootEnvPath = join(__dirname, '..', '..', '..', '.env');
         ]
       : []),
     HealthModule,
+    AuthModule,
     CategoriesModule,
     TagsModule,
     CompaniesModule,
@@ -103,6 +106,10 @@ const rootEnvPath = join(__dirname, '..', '..', '..', '.env');
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
     },
   ],
 })

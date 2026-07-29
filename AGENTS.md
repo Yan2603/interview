@@ -32,6 +32,9 @@ pnpm build:client  # 仅构建前端
 
 # 生产启动（需先构建）
 pnpm start:prod
+
+# 创建个人锁账号（无开放注册；需 MongoDB 与 JWT_* 已配置）
+pnpm --filter @interview/server create-user -- --username <name> --password <pass>
 ```
 
 ## 环境配置
@@ -41,6 +44,9 @@ pnpm start:prod
 - `AI_API_KEY` — 通义/OpenAI API 密钥（AI 作答功能必需）
 - `AI_BASE_URL` — API 端点（默认为通义兼容端点）
 - `AI_MODEL` — 模型名称（默认：`qwen-max`）
+- `JWT_ACCESS_SECRET` — access token 签名密钥（必需）
+- `JWT_ACCESS_TTL` — access 有效期（可选，默认 `15m`）
+- `JWT_REFRESH_TTL` — opaque refresh 有效期（可选，默认 `7d`；refresh 存 MongoDB，无需 JWT_REFRESH_SECRET）
 
 **开发环境：** 需要本地 MongoDB 运行。前端通过 Vite 配置将 `/api` 请求代理到后端。
 
@@ -131,7 +137,7 @@ packages/
 - **生产静态文件服务：** 后端从 `dist/public` 提供构建后的前端，排除 `/api*` 路径
 - **Docker 注意事项：** Linux 云服务器上请勿使用 `host.docker.internal` 连接 MongoDB — 使用 compose 服务名 `mongo`
 - **数据填充：** 首次启动时若数据库为空会自动填充
-- **无身份认证：** 应用无登录系统 — 请勿公开部署
+- **个人锁 JWT 鉴权：** 几乎全部 `/api/*` 需有效 access token；`POST /api/auth/login`、`POST /api/auth/refresh`、`GET /api/health` 为公开。首个账号用 `create-user` 脚本创建，无注册接口。仍建议勿对公网裸露（单用户、无注册场景）
 
 ## AI 答案生成流程
 
