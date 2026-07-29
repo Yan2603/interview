@@ -95,9 +95,10 @@ pnpm --filter server create-user -- --username <name> --password <pass>
 写入 `.env.example`（真实值仅本地 `.env`）：
 
 - `JWT_ACCESS_SECRET`
-- `JWT_REFRESH_SECRET`
 - `JWT_ACCESS_TTL`（默认如 `15m`）
 - `JWT_REFRESH_TTL`（默认如 `7d`）
+
+Refresh 为 opaque 随机串，哈希后存 MongoDB；不使用 `JWT_REFRESH_SECRET`。
 
 ## 无感刷新
 

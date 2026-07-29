@@ -45,9 +45,8 @@ pnpm --filter @interview/server create-user -- --username <name> --password <pas
 - `AI_BASE_URL` — API 端点（默认为通义兼容端点）
 - `AI_MODEL` — 模型名称（默认：`qwen-max`）
 - `JWT_ACCESS_SECRET` — access token 签名密钥（必需）
-- `JWT_REFRESH_SECRET` — refresh token 签名密钥（必需）
 - `JWT_ACCESS_TTL` — access 有效期（可选，默认 `15m`）
-- `JWT_REFRESH_TTL` — refresh 有效期（可选，默认 `7d`）
+- `JWT_REFRESH_TTL` — opaque refresh 有效期（可选，默认 `7d`；refresh 存 MongoDB，无需 JWT_REFRESH_SECRET）
 
 **开发环境：** 需要本地 MongoDB 运行。前端通过 Vite 配置将 `/api` 请求代理到后端。
 

@@ -85,7 +85,6 @@ Expected: `packages/server/package.json` 出现上述依赖。
 ```env
 # Auth (JWT)
 JWT_ACCESS_SECRET=change-me-access-secret
-JWT_REFRESH_SECRET=change-me-refresh-secret
 JWT_ACCESS_TTL=15m
 JWT_REFRESH_TTL=7d
 ```
@@ -805,7 +804,7 @@ git commit -m "feat(client): add sidebar logout and auth headers for chat SSE"
 替换「无身份认证 / 请勿公开部署」相关过时表述为：
 - 个人锁 JWT 鉴权已启用
 - 建号：`pnpm --filter @interview/server create-user -- --username <n> --password <p>`
-- 必需 env：`JWT_ACCESS_SECRET`、`JWT_REFRESH_SECRET`、可选 TTL
+- 必需 env：`JWT_ACCESS_SECRET`、可选 TTL（refresh 为 opaque DB 记录，无 JWT_REFRESH_SECRET）
 - 仍建议勿对公网裸奔（无注册、单用户场景）
 
 - [ ] **Step 2: 按设计文档手动验收清单跑一遍**
