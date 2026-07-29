@@ -8,7 +8,8 @@
     "start:dev": "nest start --watch",
     "dev": "nest start --watch",
     "start:prod": "node dist/main.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "create-user": "nest build && node dist/auth/create-user.cli.js"
   },
   "dependencies": {
     "@langchain/community": "^0.3.59",
