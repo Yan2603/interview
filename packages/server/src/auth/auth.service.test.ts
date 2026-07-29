@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'crypto';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { UnauthorizedException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 type UserRecord = {
@@ -101,6 +101,14 @@ describe('AuthService', () => {
       jwtServiceMock as never,
       configMock as never,
     );
+  });
+
+  it('createUser throws ConflictException for duplicate username', async () => {
+    await service.createUser('dup', 'Correct1!');
+    await expect(service.createUser('dup', 'Other1!')).rejects.toMatchObject({
+      message: '用户名已存在',
+      constructor: ConflictException,
+    });
   });
 
   it('validateUser returns null for wrong password', async () => {

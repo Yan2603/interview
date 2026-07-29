@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'crypto';
 import {
+  ConflictException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -40,9 +41,25 @@ export class AuthService {
     username: string,
     password: string,
   ): Promise<AuthUser> {
+    const existing = await this.userModel.findOne({ username });
+    if (existing) {
+      throw new ConflictException('用户名已存在');
+    }
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await this.userModel.create({ username, passwordHash });
-    return { id: String(user._id), username: user.username };
+    try {
+      const user = await this.userModel.create({ username, passwordHash });
+      return { id: String(user._id), username: user.username };
+    } catch (err: unknown) {
+      if (
+        err &&
+        typeof err === 'object' &&
+        'code' in err &&
+        (err as { code: number }).code === 11000
+      ) {
+        throw new ConflictException('用户名已存在');
+      }
+      throw err;
+    }
   }
 
   async validateUser(
