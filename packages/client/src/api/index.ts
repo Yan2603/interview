@@ -122,10 +122,6 @@ export const api = {
       .then((r) => r.data);
   },
 
-  // TODO: 后续鉴权提案实现真实接口 POST /api/auth/sms/send，此处仅 mock 成功
-  sendSmsCode: (_phone: string, _dialCode: string): Promise<void> =>
-    new Promise((resolve) => setTimeout(resolve, 500)),
-
   listKnowledgeDocuments: () =>
     http.get<KnowledgeDocument[]>('/knowledge/documents').then((r) => r.data),
 
