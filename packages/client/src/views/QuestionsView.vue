@@ -62,6 +62,7 @@ const categoryName = computed(() => {
 });
 
 const modalOpen = ref(false);
+const formSaving = ref(false);
 const editingId = ref<string | null>(null);
 const form = ref({
   title: '',
@@ -159,6 +160,7 @@ async function submitQuestion() {
     message.warning('请填写题目标题');
     return;
   }
+  if (formSaving.value) return;
   const payload = {
     title: form.value.title.trim(),
     categorySlug: form.value.categorySlug,
@@ -166,6 +168,7 @@ async function submitQuestion() {
     tags: form.value.tags,
     companies: form.value.companies,
   };
+  formSaving.value = true;
   try {
     if (editingId.value) {
       await api.updateQuestion(editingId.value, payload);
@@ -179,6 +182,8 @@ async function submitQuestion() {
     await load();
   } catch (err) {
     message.error(getErrorMessage(err));
+  } finally {
+    formSaving.value = false;
   }
 }
 
@@ -529,41 +534,47 @@ async function removeQuestion(record: Question) {
     <a-modal
       v-model:open="modalOpen"
       :title="isEditing ? '编辑题目' : '新建题目'"
+      :confirm-loading="formSaving"
+      :mask-closable="!formSaving"
+      :closable="!formSaving"
+      :keyboard="!formSaving"
       @ok="submitQuestion"
     >
-      <a-form layout="vertical">
-        <a-form-item label="标题" required>
-          <a-input v-model:value="form.title" />
-        </a-form-item>
-        <a-form-item label="分类">
-          <a-select v-model:value="form.categorySlug">
-            <a-select-option v-for="c in categories" :key="c.slug" :value="c.slug">
-              {{ c.name }}
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item label="题目描述（可选）">
-          <a-textarea v-model:value="form.content" :rows="3" />
-        </a-form-item>
-        <a-form-item label="标签">
-          <a-select
-            v-model:value="form.tags"
-            mode="multiple"
-            placeholder="选择标签"
-            :options="formTagOptions"
-            style="width: 100%"
-          />
-        </a-form-item>
-        <a-form-item label="关联公司">
-          <a-select
-            v-model:value="form.companies"
-            mode="multiple"
-            placeholder="选择公司"
-            :options="formCompanyOptions"
-            style="width: 100%"
-          />
-        </a-form-item>
-      </a-form>
+      <a-spin :spinning="formSaving">
+        <a-form layout="vertical">
+          <a-form-item label="标题" required>
+            <a-input v-model:value="form.title" />
+          </a-form-item>
+          <a-form-item label="分类">
+            <a-select v-model:value="form.categorySlug">
+              <a-select-option v-for="c in categories" :key="c.slug" :value="c.slug">
+                {{ c.name }}
+              </a-select-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item label="题目描述（可选）">
+            <a-textarea v-model:value="form.content" :rows="3" />
+          </a-form-item>
+          <a-form-item label="标签">
+            <a-select
+              v-model:value="form.tags"
+              mode="multiple"
+              placeholder="选择标签"
+              :options="formTagOptions"
+              style="width: 100%"
+            />
+          </a-form-item>
+          <a-form-item label="关联公司">
+            <a-select
+              v-model:value="form.companies"
+              mode="multiple"
+              placeholder="选择公司"
+              :options="formCompanyOptions"
+              style="width: 100%"
+            />
+          </a-form-item>
+        </a-form>
+      </a-spin>
     </a-modal>
 
     <a-modal

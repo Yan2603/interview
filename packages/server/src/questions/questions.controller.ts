@@ -51,14 +51,16 @@ export class QuestionsController {
   @Post()
   async create(@Body() dto: CreateQuestionDto) {
     const q = await this.service.create(dto);
-    await this.safeUpsert(q);
+    // 同步索引会阻塞保存（embedding + Milvus）；改由知识库管理页手工重建
+    // await this.safeUpsert(q);
     return q;
   }
 
   @Patch(':id')
   async update(@Param('id') id: string, @Body() dto: UpdateQuestionDto) {
     const q = await this.service.update(id, dto);
-    await this.safeUpsert(q);
+    // 同步索引会阻塞保存（embedding + Milvus）；改由知识库管理页手工重建
+    // await this.safeUpsert(q);
     return q;
   }
 
