@@ -72,8 +72,10 @@ const siderOpenKeys = computed({
   },
 });
 
-/** 聊天页自带内层滚动，右侧 content 不再二次滚动 */
-const isChatRoute = computed(() => route.path.startsWith('/chat'));
+/** 聊天 / 题库列表自带内层滚动，右侧 content 不再二次滚动 */
+const isFixedContentRoute = computed(
+  () => route.path.startsWith('/chat') || route.path === '/questions',
+);
 
 const categorySelectedKeys = computed(() => {
   const cat = route.query.category as string | undefined;
@@ -259,7 +261,7 @@ async function removeCategory(cat: Category) {
       </a-layout-sider>
 
       <a-layout class="app-main">
-        <a-layout-content class="content" :class="{ 'content--fixed': isChatRoute }">
+        <a-layout-content class="content" :class="{ 'content--fixed': isFixedContentRoute }">
           <RouterView />
         </a-layout-content>
       </a-layout>
@@ -410,7 +412,7 @@ async function removeCategory(cat: Category) {
   box-sizing: border-box;
 }
 
-/* 聊天等自带内层滚动的页面：右侧外壳不再滚 */
+/* 聊天、题库列表等自带内层滚动的页面：右侧外壳不再滚 */
 .content--fixed {
   padding: 0;
   overflow: hidden;
