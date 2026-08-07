@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { api, MASTERY_COLORS, MASTERY_LABELS } from '../api';
@@ -42,6 +42,111 @@ const drawerOpen = ref(false);
 const drawerQuestion = ref<Question | null>(null);
 const aiPreviewOpen = ref(false);
 const aiPreviewQuestion = ref<Question | null>(null);
+
+const TITLE_WIDTH_STORAGE_KEY = 'interview.questions.titleColumnWidth';
+const TITLE_WIDTH_MIN = 160;
+const TITLE_WIDTH_DEFAULT = 320;
+
+/** 内容列按控件/文案保底；题目列单独可拖拽 */
+const COL_INDEX = 60;
+const COL_CATEGORY = 96;
+const COL_COMPANY = 120;
+const COL_MASTERY = 88;
+const COL_AI = 168;
+const COL_TAGS = 140;
+const COL_ACTIONS = 112;
+const OTHER_COLUMNS_WIDTH =
+  COL_INDEX + COL_CATEGORY + COL_COMPANY + COL_MASTERY + COL_AI + COL_TAGS + COL_ACTIONS;
+
+function readStoredTitleWidth(): number {
+  try {
+    const raw = localStorage.getItem(TITLE_WIDTH_STORAGE_KEY);
+    const n = raw == null ? NaN : Number(raw);
+    if (!Number.isFinite(n) || n < TITLE_WIDTH_MIN) return TITLE_WIDTH_DEFAULT;
+    return Math.round(n);
+  } catch {
+    return TITLE_WIDTH_DEFAULT;
+  }
+}
+
+const titleColumnWidth = ref(readStoredTitleWidth());
+
+/** 总宽不够时横滑，避免把按钮/标签挤没 */
+const tableScrollX = computed(() => titleColumnWidth.value + OTHER_COLUMNS_WIDTH);
+
+type TableColumn = {
+  title: string;
+  key: string;
+  dataIndex?: string;
+  width?: number;
+  minWidth?: number;
+  align?: 'left' | 'center' | 'right';
+  ellipsis?: boolean;
+  resizable?: boolean;
+  fixed?: 'left' | 'right';
+};
+
+const columns = ref<TableColumn[]>([
+  { title: '序号', key: 'index', width: COL_INDEX, align: 'center' },
+  {
+    title: '题目',
+    dataIndex: 'title',
+    key: 'title',
+    width: titleColumnWidth.value,
+    minWidth: TITLE_WIDTH_MIN,
+    resizable: true,
+  },
+  { title: '分类', dataIndex: 'categorySlug', key: 'categorySlug', width: COL_CATEGORY },
+  { title: '公司', key: 'companies', width: COL_COMPANY },
+  { title: '掌握度', key: 'mastery', width: COL_MASTERY },
+  { title: 'AI', key: 'ai', width: COL_AI },
+  { title: '标签', key: 'tags', width: COL_TAGS},
+  { title: '操作', key: 'actions', width: COL_ACTIONS, fixed: 'right' },
+]);
+
+function handleResizeColumn(width: number, col: TableColumn) {
+  if (col.key !== 'title') return;
+  const next = Math.max(TITLE_WIDTH_MIN, Math.round(width));
+  col.width = next;
+  titleColumnWidth.value = next;
+  try {
+    localStorage.setItem(TITLE_WIDTH_STORAGE_KEY, String(next));
+  } catch {
+    // ignore quota / private mode errors
+  }
+}
+
+const tablePanelRef = ref<HTMLElement | null>(null);
+const tableScrollY = ref(400);
+let tablePanelObserver: ResizeObserver | null = null;
+
+function measureTableScrollY() {
+  const panel = tablePanelRef.value;
+  if (!panel) return;
+  // 面板高度为 0 时跳过，避免切换分类/加载中测到塌缩值
+  if (panel.clientHeight < 160) return;
+
+  const header =
+    (panel.querySelector('.ant-table-header') as HTMLElement | null) ??
+    (panel.querySelector('.ant-table-thead') as HTMLElement | null);
+  const pagination = panel.querySelector('.ant-table-pagination') as HTMLElement | null;
+  const headerH = header?.offsetHeight ?? 55;
+  const paginationStyle = pagination ? getComputedStyle(pagination) : null;
+  const paginationH = pagination
+    ? pagination.offsetHeight +
+      (Number.parseFloat(paginationStyle?.marginTop || '0') || 0) +
+      (Number.parseFloat(paginationStyle?.marginBottom || '0') || 0)
+    : 64;
+  const next = Math.floor(panel.clientHeight - headerH - paginationH);
+  if (next > 120 && next !== tableScrollY.value) {
+    tableScrollY.value = next;
+  }
+}
+
+const tableScroll = computed(() => ({
+  x: tableScrollX.value,
+  y: tableScrollY.value,
+}));
 
 function onTableChange(pag: { current?: number; pageSize?: number }) {
   const pageSizeChanged = pag.pageSize !== undefined && pag.pageSize !== tablePagination.value.pageSize;
@@ -118,11 +223,25 @@ onMounted(async () => {
   await Promise.all([loadCategories(), loadTags(), loadCompanies()]);
   form.value.categorySlug = categoryFilter.value ?? categories.value[0]?.slug ?? 'vue3';
   await load();
+  await nextTick();
+  measureTableScrollY();
+  tablePanelObserver = new ResizeObserver(() => measureTableScrollY());
+  if (tablePanelRef.value) tablePanelObserver.observe(tablePanelRef.value);
+});
+
+onBeforeUnmount(() => {
+  tablePanelObserver?.disconnect();
+  tablePanelObserver = null;
 });
 
 watch([() => route.query.category, mastery, companyFilter], () => {
   tablePagination.value.current = 1;
   load();
+});
+
+watch([questions, loading, () => tablePagination.value.pageSize], async () => {
+  await nextTick();
+  requestAnimationFrame(() => measureTableScrollY());
 });
 
 async function onSearch() {
@@ -386,7 +505,7 @@ async function removeQuestion(record: Question) {
 </script>
 
 <template>
-  <div>
+  <div class="questions-page">
     <div class="toolbar">
       <h2 style="margin: 0">{{ categoryName }}</h2>
       <a-space>
@@ -420,26 +539,24 @@ async function removeQuestion(record: Question) {
       </a-space>
     </div>
 
-    <a-table
-      class="questions-table"
-      :loading="loading"
-      :data-source="questions"
-      table-layout="fixed"
-      :columns="[
-        { title: '序号', key: 'index', width: 60, align: 'center' },
-        { title: '题目', dataIndex: 'title', key: 'title', ellipsis: true },
-        { title: '分类', dataIndex: 'categorySlug', key: 'categorySlug', width: 96 },
-        { title: '公司', key: 'companies', width: 140, ellipsis: true },
-        { title: '掌握度', key: 'mastery', width: 88 },
-        { title: 'AI', key: 'ai', width: 200 },
-        { title: '标签', key: 'tags', width: 140, ellipsis: true },
-        { title: '操作', key: 'actions', width: 112 },
-      ]"
-      row-key="_id"
-      :pagination="tablePagination"
-      @change="onTableChange"
-      :custom-row="(record: Question) => ({ onClick: () => openDrawer(record), style: { cursor: 'pointer' } })"
+    <div
+      ref="tablePanelRef"
+      class="table-panel"
+      :style="{ '--questions-table-body-y': `${tableScrollY}px` }"
     >
+      <a-table
+        class="questions-table"
+        :loading="loading"
+        :data-source="questions"
+        table-layout="fixed"
+        :columns="columns"
+        :scroll="tableScroll"
+        row-key="_id"
+        :pagination="tablePagination"
+        @change="onTableChange"
+        @resizeColumn="handleResizeColumn"
+        :custom-row="(record: Question) => ({ onClick: () => openDrawer(record), style: { cursor: 'pointer' } })"
+      >
       <template #bodyCell="{ column, record, index }">
         <template v-if="column.key === 'index'">
           {{ (tablePagination.current - 1) * tablePagination.pageSize + index + 1 }}
@@ -456,7 +573,7 @@ async function removeQuestion(record: Question) {
         </template>
         <template v-else-if="column.key === 'companies'">
           <a-tooltip v-if="record.companies?.length" :title="record.companies.join('、')">
-            <div class="cell-tags">
+            <div class="cell-tags cell-tags--wrap">
               <a-tag v-for="company in record.companies" :key="company" color="blue">{{ company }}</a-tag>
             </div>
           </a-tooltip>
@@ -489,7 +606,7 @@ async function removeQuestion(record: Question) {
         </template>
         <template v-else-if="column.key === 'tags'">
           <a-tooltip v-if="record.tags?.length" :title="record.tags.join('、')">
-            <div class="cell-tags">
+            <div class="cell-tags cell-tags--wrap">
               <a-tag v-for="tag in record.tags" :key="tag">{{ tag }}</a-tag>
             </div>
           </a-tooltip>
@@ -503,7 +620,8 @@ async function removeQuestion(record: Question) {
           </a-space>
         </template>
       </template>
-    </a-table>
+      </a-table>
+    </div>
 
     <QuestionPreviewDrawer
       v-model:open="drawerOpen"
@@ -684,24 +802,51 @@ async function removeQuestion(record: Question) {
 </template>
 
 <style scoped>
+.questions-page {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 24px 24px 0 24px;
+  overflow: hidden;
+}
+
 .toolbar {
   display: flex;
+  flex-shrink: 0;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
 }
 
+.table-panel {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* scroll.y 默认只是 max-height，行少时表体收缩；强制 height 才能铺满 */
+.questions-table :deep(.ant-table-body) {
+  height: var(--questions-table-body-y) !important;
+  max-height: var(--questions-table-body-y) !important;
+}
+
 .questions-table :deep(.ant-table-tbody > tr > td) {
   vertical-align: middle;
+  overflow: hidden;
 }
 
 .question-title-link {
-  display: block;
+  display: -webkit-box;
   overflow: hidden;
   color: #1677ff;
   font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .question-title-link:hover {
@@ -716,18 +861,36 @@ async function removeQuestion(record: Question) {
   white-space: nowrap;
 }
 
+.cell-tags--wrap {
+  box-sizing: border-box;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  row-gap: 4px;
+  overflow: hidden;
+  white-space: normal;
+}
+
 .cell-tags :deep(.ant-tag) {
   margin-inline-end: 4px;
   flex-shrink: 0;
 }
 
+.cell-tags--wrap :deep(.ant-tag) {
+  margin-inline-end: 0;
+}
+
 .ai-cell {
   flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .ai-tag {
   cursor: pointer;
   margin-inline-end: 0;
+  flex-shrink: 0;
 }
 
 .markdown :deep(pre) {
