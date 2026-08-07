@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { useAuthStore } from '../auth/authStore';
 import { sanitizeRedirect } from '../auth/redirect';
+import { useParticleField } from '../composables/useParticleField';
 
 const route = useRoute();
 const router = useRouter();
@@ -14,6 +15,8 @@ const form = reactive({
   username: '',
   password: '',
 });
+
+const { canvasRef } = useParticleField();
 
 async function onSubmit() {
   if (!form.username.trim() || !form.password) {
@@ -49,10 +52,9 @@ async function onSubmit() {
 <template>
   <div class="login-page">
     <div class="login-atmosphere" aria-hidden="true">
-      <div class="login-grid" />
-      <div class="login-orb login-orb--a" />
-      <div class="login-orb login-orb--b" />
-      <div class="login-scan" />
+      <div class="login-glow login-glow--a" />
+      <div class="login-glow login-glow--b" />
+      <canvas ref="canvasRef" class="login-particles" />
     </div>
 
     <a-card class="login-card" :bordered="false">
@@ -98,16 +100,17 @@ async function onSubmit() {
 
 <style scoped>
 .login-page {
-  --login-bg-0: #070b14;
-  --login-bg-1: #0d1526;
+  --login-bg-0: #e8eef8;
+  --login-bg-1: #d4e2f5;
   --login-accent: #2f6fed;
-  --login-accent-soft: rgba(47, 111, 237, 0.35);
-  --login-text: rgba(235, 240, 255, 0.92);
-  --login-muted: rgba(180, 195, 230, 0.55);
-  --login-border: rgba(140, 170, 255, 0.28);
+  --login-accent-soft: rgba(47, 111, 237, 0.22);
+  --login-text: #1a2744;
+  --login-muted: rgba(60, 85, 130, 0.62);
+  --login-border: rgba(70, 120, 200, 0.28);
 
   position: relative;
   isolation: isolate;
+  height: 100%;
   min-height: 100%;
   display: flex;
   align-items: center;
@@ -115,8 +118,9 @@ async function onSubmit() {
   padding: 24px;
   overflow: hidden;
   background:
-    radial-gradient(120% 80% at 50% -10%, #132038 0%, transparent 55%),
-    linear-gradient(160deg, var(--login-bg-0), var(--login-bg-1));
+    radial-gradient(90% 70% at 80% 10%, rgba(120, 180, 255, 0.45), transparent 55%),
+    radial-gradient(70% 60% at 10% 90%, rgba(160, 210, 255, 0.35), transparent 50%),
+    linear-gradient(165deg, var(--login-bg-0), var(--login-bg-1));
   color: var(--login-text);
 }
 
@@ -128,56 +132,35 @@ async function onSubmit() {
   overflow: hidden;
 }
 
-.login-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(120, 160, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(120, 160, 255, 0.07) 1px, transparent 1px);
-  background-size: 48px 48px;
-  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
-  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
-  opacity: 0.7;
-}
-
-.login-orb {
+.login-glow {
   position: absolute;
   border-radius: 50%;
-  filter: blur(40px);
-  opacity: 0.45;
+  filter: blur(60px);
+  opacity: 0.55;
 }
 
-.login-orb--a {
-  width: 280px;
-  height: 280px;
-  left: 8%;
-  top: 18%;
-  background: radial-gradient(circle, rgba(47, 111, 237, 0.55), transparent 70%);
-  animation: login-orb-a 18s ease-in-out infinite alternate;
+.login-glow--a {
+  width: 420px;
+  height: 420px;
+  left: -80px;
+  top: -60px;
+  background: radial-gradient(circle, rgba(120, 180, 255, 0.7), transparent 70%);
 }
 
-.login-orb--b {
-  width: 320px;
-  height: 320px;
-  right: 6%;
-  bottom: 10%;
-  background: radial-gradient(circle, rgba(56, 189, 248, 0.35), transparent 70%);
-  animation: login-orb-b 22s ease-in-out infinite alternate;
+.login-glow--b {
+  width: 380px;
+  height: 380px;
+  right: -60px;
+  bottom: -40px;
+  background: radial-gradient(circle, rgba(90, 160, 240, 0.45), transparent 70%);
 }
 
-.login-scan {
+.login-particles {
   position: absolute;
-  left: 0;
-  right: 0;
-  height: 120px;
-  top: -120px;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    rgba(120, 170, 255, 0.06),
-    transparent
-  );
-  animation: login-scan 9s linear infinite;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .login-card {
@@ -185,15 +168,14 @@ async function onSubmit() {
   z-index: 1;
   width: 100%;
   max-width: 360px;
-  background: rgba(12, 18, 32, 0.72) !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--login-border);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--login-border) !important;
+  border-radius: 14px;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-    0 20px 50px rgba(0, 0, 0, 0.45);
-  animation: login-card-breathe 4.5s ease-in-out infinite;
+    0 0 0 1px rgba(255, 255, 255, 0.55) inset,
+    0 18px 40px rgba(40, 80, 140, 0.12);
 }
 
 .login-card :deep(.ant-card-body) {
@@ -212,7 +194,7 @@ async function onSubmit() {
   position: absolute;
   width: 14px;
   height: 14px;
-  border-color: rgba(140, 180, 255, 0.55);
+  border-color: rgba(70, 120, 200, 0.45);
   border-style: solid;
 }
 
@@ -235,7 +217,7 @@ async function onSubmit() {
   gap: 12px;
   margin-bottom: 20px;
   padding-bottom: 14px;
-  border-bottom: 1px solid rgba(140, 170, 255, 0.16);
+  border-bottom: 1px solid rgba(70, 120, 200, 0.14);
 }
 
 .login-card__title {
@@ -255,31 +237,67 @@ async function onSubmit() {
 }
 
 .login-card :deep(.ant-form-item-label > label) {
-  color: rgba(210, 220, 245, 0.88);
+  color: rgba(40, 60, 100, 0.88);
 }
 
-.login-card :deep(.ant-input-affix-wrapper),
-.login-card :deep(.ant-input) {
-  background: rgba(6, 10, 20, 0.65);
-  border-color: rgba(120, 150, 210, 0.35);
+.login-card :deep(.ant-input-affix-wrapper) {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(100, 140, 200, 0.4);
+  background: transparent !important;
+  box-shadow: none;
   color: var(--login-text);
 }
 
 .login-card :deep(.ant-input-affix-wrapper:hover),
-.login-card :deep(.ant-input:hover),
 .login-card :deep(.ant-input-affix-wrapper-focused),
-.login-card :deep(.ant-input:focus) {
-  border-color: var(--login-accent);
+.login-card :deep(.ant-input-affix-wrapper:focus-within) {
+  background: transparent !important;
+  border-color: var(--login-accent) !important;
   box-shadow: 0 0 0 2px var(--login-accent-soft);
 }
 
+/* 内层 input 去底去边，避免「套娃」割裂感 */
+.login-card :deep(.ant-input-affix-wrapper > input.ant-input),
+.login-card :deep(.ant-input-affix-wrapper .ant-input) {
+  height: 42px;
+  padding: 0;
+  border: none !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 15px;
+  color: var(--login-text);
+}
+
+.login-card :deep(.ant-input-affix-wrapper > input.ant-input:hover),
+.login-card :deep(.ant-input-affix-wrapper > input.ant-input:focus),
+.login-card :deep(.ant-input-affix-wrapper .ant-input:hover),
+.login-card :deep(.ant-input-affix-wrapper .ant-input:focus) {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.login-card :deep(input.ant-input:-webkit-autofill),
+.login-card :deep(input.ant-input:-webkit-autofill:hover),
+.login-card :deep(input.ant-input:-webkit-autofill:focus),
+.login-card :deep(.ant-input-affix-wrapper > input.ant-input:-webkit-autofill) {
+  -webkit-text-fill-color: var(--login-text);
+  caret-color: var(--login-text);
+  transition: background-color 99999s ease-out;
+  box-shadow: 0 0 0 1000px transparent inset !important;
+  background-color: transparent !important;
+}
+
 .login-card :deep(.ant-input::placeholder) {
-  color: rgba(160, 175, 210, 0.45);
+  color: rgba(90, 115, 155, 0.5);
 }
 
 .login-card :deep(.ant-input-password-icon),
 .login-card :deep(.ant-input-clear-icon) {
-  color: rgba(180, 195, 230, 0.65);
+  color: rgba(90, 115, 155, 0.65);
 }
 
 .login-card :deep(.ant-btn-primary) {
@@ -295,58 +313,12 @@ async function onSubmit() {
 }
 
 .login-card :deep(.ant-form-item-explain-error) {
-  color: #ff8e8e;
-}
-
-@keyframes login-orb-a {
-  from {
-    transform: translate(0, 0);
-  }
-  to {
-    transform: translate(36px, 28px);
-  }
-}
-
-@keyframes login-orb-b {
-  from {
-    transform: translate(0, 0);
-  }
-  to {
-    transform: translate(-42px, -24px);
-  }
-}
-
-@keyframes login-scan {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(calc(100vh + 120px));
-  }
-}
-
-@keyframes login-card-breathe {
-  0%,
-  100% {
-    border-color: rgba(140, 170, 255, 0.28);
-  }
-  50% {
-    border-color: rgba(140, 170, 255, 0.48);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .login-orb--a,
-  .login-orb--b,
-  .login-scan,
-  .login-card {
-    animation: none;
-  }
+  color: #d4380d;
 }
 
 @media (max-width: 480px) {
-  .login-orb {
-    opacity: 0.28;
+  .login-glow {
+    opacity: 0.35;
   }
 
   .login-card__header {
