@@ -135,6 +135,7 @@ async function onSubmit() {
     linear-gradient(rgba(120, 160, 255, 0.07) 1px, transparent 1px),
     linear-gradient(90deg, rgba(120, 160, 255, 0.07) 1px, transparent 1px);
   background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
   mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
   opacity: 0.7;
 }
@@ -187,7 +188,7 @@ async function onSubmit() {
   background: rgba(12, 18, 32, 0.72) !important;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--login-border) !important;
+  border: 1px solid var(--login-border);
   border-radius: 12px;
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.03) inset,
