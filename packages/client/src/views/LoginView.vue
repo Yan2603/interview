@@ -48,9 +48,26 @@ async function onSubmit() {
 
 <template>
   <div class="login-page">
-    <a-card class="login-card" title="登录">
+    <div class="login-atmosphere" aria-hidden="true">
+      <div class="login-grid" />
+      <div class="login-orb login-orb--a" />
+      <div class="login-orb login-orb--b" />
+      <div class="login-scan" />
+    </div>
+
+    <a-card class="login-card" :bordered="false">
+      <div class="login-card__corners" aria-hidden="true" />
+      <div class="login-card__header">
+        <h1 class="login-card__title">登录</h1>
+        <p class="login-card__brand">面试驾驶舱</p>
+      </div>
+
       <a-form :model="form" layout="vertical" @finish="onSubmit">
-        <a-form-item label="用户名" name="username" :rules="[{ required: true, message: '请输入用户名' }]">
+        <a-form-item
+          label="用户名"
+          name="username"
+          :rules="[{ required: true, message: '请输入用户名' }]"
+        >
           <a-input
             v-model:value="form.username"
             autocomplete="username"
@@ -58,7 +75,11 @@ async function onSubmit() {
             allow-clear
           />
         </a-form-item>
-        <a-form-item label="密码" name="password" :rules="[{ required: true, message: '请输入密码' }]">
+        <a-form-item
+          label="密码"
+          name="password"
+          :rules="[{ required: true, message: '请输入密码' }]"
+        >
           <a-input-password
             v-model:value="form.password"
             autocomplete="current-password"
