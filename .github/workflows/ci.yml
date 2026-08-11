@@ -84,9 +84,15 @@ jobs:
             cd "${{ secrets.DEPLOY_PATH }}"
             git fetch origin
             git reset --hard "origin/${{ github.ref_name }}"
+            # 构建前先腾磁盘：失败时 prune 不会执行，悬空层会把 ECS 撑满导致 ENOSPC
+            df -h
+            docker system df || true
+            docker builder prune -af || true
+            docker image prune -af || true
             # 先拉依赖镜像，再 build/up，避免卡在 milvus Pulling 时整次超时难排查
             docker network create edge-net || true
             docker compose pull mongo postgres etcd minio milvus
             docker compose up -d --build
             docker compose -f deploy/edge/docker-compose.yml up -d
             docker image prune -f
+            df -h

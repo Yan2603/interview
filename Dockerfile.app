@@ -5,11 +5,10 @@ WORKDIR /app
 FROM base AS deps
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/server/package.json packages/server/
-COPY packages/server /app/packages/server
 COPY packages/client/package.json packages/client/
 RUN echo "node-linker=hoisted" >> .npmrc
-RUN pnpm install
-RUN echo "node-linker=hoisted" >> .npmrc
+# 只装 server 及其依赖，避免把 ant-design-vue 等前端包打进 app 镜像
+RUN pnpm install --filter @interview/server... --frozen-lockfile
 
 FROM deps AS build
 COPY packages/server ./packages/server
