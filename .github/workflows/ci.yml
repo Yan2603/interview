@@ -84,15 +84,21 @@ jobs:
             cd "${{ secrets.DEPLOY_PATH }}"
             git fetch origin
             git reset --hard "origin/${{ github.ref_name }}"
-            # 构建前先腾磁盘：失败时 prune 不会执行，悬空层会把 ECS 撑满导致 ENOSPC
-            df -h
-            docker system df || true
-            docker builder prune -af || true
-            docker image prune -af || true
+            # 磁盘紧张才狠清；平时只删悬空镜像，避免每次 builder prune -af 拖慢部署
+            df -h || true
+            USED=$(df -P / | awk 'NR==2 { gsub(/%/,"",$5); print $5 }')
+            if [ "${USED:-0}" -ge 80 ]; then
+              echo "Disk ${USED}% >= 80%; pruning build cache and unused images"
+              timeout 120 docker builder prune -af || true
+              timeout 120 docker image prune -af || true
+            else
+              echo "Disk ${USED}% < 80%; skip heavy prune"
+              timeout 60 docker image prune -f || true
+            fi
             # 先拉依赖镜像，再 build/up，避免卡在 milvus Pulling 时整次超时难排查
             docker network create edge-net || true
             docker compose pull mongo postgres etcd minio milvus
             docker compose up -d --build
             docker compose -f deploy/edge/docker-compose.yml up -d
-            docker image prune -f
-            df -h
+            docker image prune -f || true
+            df -h || true
