@@ -84,21 +84,11 @@ jobs:
             cd "${{ secrets.DEPLOY_PATH }}"
             git fetch origin
             git reset --hard "origin/${{ github.ref_name }}"
-            # 磁盘紧张才狠清；平时只删悬空镜像，避免每次 builder prune -af 拖慢部署
-            df -h || true
-            USED=$(df -P / | awk 'NR==2 { gsub(/%/,"",$5); print $5 }')
-            if [ "${USED:-0}" -ge 80 ]; then
-              echo "Disk ${USED}% >= 80%; pruning build cache and unused images"
-              timeout 120 docker builder prune -af || true
-              timeout 120 docker image prune -af || true
-            else
-              echo "Disk ${USED}% < 80%; skip heavy prune"
-              timeout 60 docker image prune -f || true
-            fi
+            # 部署前只清悬空镜像，避免每次狠清拖慢构建
+            docker image prune -f || true
             # 先拉依赖镜像，再 build/up，避免卡在 milvus Pulling 时整次超时难排查
             docker network create edge-net || true
             docker compose pull mongo postgres etcd minio milvus
             docker compose up -d --build
             docker compose -f deploy/edge/docker-compose.yml up -d
             docker image prune -f || true
-            df -h || true
