@@ -15,6 +15,7 @@ pnpm install           # 若提示 ignored builds，已在 pnpm-workspace.yaml �
 cp .env.example .env   # 配置 MONGODB_URI、AI_API_KEY、DATABASE_URL、MILVUS_URI 等
 
 # 用 Docker 起依赖（映射到本机端口，供 pnpm 连接 localhost）
+docker network create edge-net || true   # 根 compose 声明了 external edge-net
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d mongo postgres etcd minio milvus
 
 pnpm dev               # 前端 :5173，后端 :3000
@@ -24,10 +25,27 @@ pnpm dev               # 前端 :5173，后端 :3000
 
 ## 生产部署（云服务器）
 
+生产入口由 **edge Nginx 容器**（`edge-nginx`，见 `deploy/edge/`）占用宿主 `:80`，按路径反代：
+
+- `/`、`/api/`、`/uploads/` → `interview-nginx`
+- `/movie/` → `douban-web`（同机 douban 时）
+
+interview 的 nginx **不再**映射宿主 80，仅 `expose` 并加入外部网络 `edge-net`。
+
+排障：响应头 `X-Request-Id`（全链路）、`X-Served-By`（如 `edge/interview`、`edge/douban`）；edge 日志含 `target=` 与 `upstream=`：
+
+```bash
+docker logs edge-nginx --tail 100
+docker logs interview-nginx --tail 100
+# 用同一 request id 在 app 日志中检索
+```
+
 ```bash
 cp .env.example .env   # 填写 AI_API_KEY 等（MONGODB_URI / DATABASE_URL / MILVUS_URI 由 compose 注入，无需改成 localhost）
+docker network create edge-net || true
 docker compose up -d --build
-# 访问 http://<server-ip>  （Nginx :80 反代 /api 到后端）
+docker compose -f deploy/edge/docker-compose.yml up -d
+# 访问 http://<server-ip>
 ```
 
 生产 **不要** 带上 `docker-compose.dev.yml`，否则会把 Mongo/Postgres/Milvus 端口暴露到宿主机。
@@ -36,7 +54,7 @@ Docker 内服务互连使用 compose 服务名（`mongo` / `postgres` / `milvus`
 
 ### 自动部署（GitHub Actions）
 
-push 到 `main` / `master`（或在 Actions 里手动 Run workflow）时会：lint/build → 校验 Docker 构建 → SSH 到 ECS 执行 `git pull` + `docker compose up -d --build` + `docker image prune -f`。
+push 到 `main` / `master`（或在 Actions 里手动 Run workflow）时会：lint/build → 校验 Docker 构建 → SSH 到 ECS 执行 `git pull` + `docker compose up -d --build` + `deploy/edge` up + `docker image prune -f`。
 
 部署默认关闭，需先完成以下配置。
 

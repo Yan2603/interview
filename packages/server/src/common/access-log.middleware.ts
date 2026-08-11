@@ -1,6 +1,7 @@
 import { Inject, Injectable, LoggerService, NestMiddleware } from '@nestjs/common';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { NextFunction, Request, Response } from 'express';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class AccessLogMiddleware implements NestMiddleware {
@@ -11,6 +12,10 @@ export class AccessLogMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
     const start = Date.now();
     const { method, originalUrl, ip } = req;
+    const requestId =
+      (req.get('x-request-id') || '').trim() || randomUUID().replace(/-/g, '');
+
+    res.setHeader('X-Request-Id', requestId);
 
     res.on('finish', () => {
       const ms = Date.now() - start;
@@ -18,6 +23,7 @@ export class AccessLogMiddleware implements NestMiddleware {
       const message = `${method} ${originalUrl}`;
 
       const logData = {
+        requestId,
         method,
         url: originalUrl,
         statusCode,
@@ -29,9 +35,9 @@ export class AccessLogMiddleware implements NestMiddleware {
       if (statusCode >= 500) {
         this.logger.error(`${message} ${statusCode} ${ms}ms`, JSON.stringify(logData), 'HTTP');
       } else if (statusCode >= 400) {
-        this.logger.warn(`${message} ${statusCode} ${ms}ms`, 'HTTP');
+        this.logger.warn(`${message} ${statusCode} ${ms}ms requestId=${requestId}`, 'HTTP');
       } else {
-        this.logger.log(`${message} ${statusCode} ${ms}ms`, 'HTTP');
+        this.logger.log(`${message} ${statusCode} ${ms}ms requestId=${requestId}`, 'HTTP');
       }
     });
 

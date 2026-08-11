@@ -3,13 +3,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: interview-nginx
     restart: unless-stopped
-    ports:
-      - "80:80"
+    expose:
+      - "80"
     depends_on:
       - app
     networks:
       - interview-net
+      - edge-net
 
   app:
     build:
@@ -149,3 +151,5 @@ volumes:
 networks:
   interview-net:
     driver: bridge
+  edge-net:
+    external: true

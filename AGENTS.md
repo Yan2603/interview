@@ -50,7 +50,7 @@ pnpm --filter @interview/server create-user -- --username <name> --password <pas
 
 **开发环境：** 需要本地 MongoDB 运行。前端通过 Vite 配置将 `/api` 请求代理到后端。
 
-**生产环境（Docker）：** 使用 `docker compose up -d --build`。Nginx 提供前端静态文件并代理 `/api` 到后端。MongoDB 作为 compose 服务运行，服务名为 `mongo`。
+**生产环境（Docker）：** 使用 `docker network create edge-net` 后 `docker compose up -d --build`，再 `docker compose -f deploy/edge/docker-compose.yml up -d`。`edge-nginx` 独占宿主 `:80`；interview nginx 仅 `expose` 并反代 `/api` 到后端。MongoDB 作为 compose 服务运行，服务名为 `mongo`。
 
 ## 架构
 
