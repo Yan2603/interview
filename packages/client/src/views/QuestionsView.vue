@@ -33,6 +33,7 @@ const tablePagination = ref({
   showSizeChanger: true,
   showQuickJumper: true,
   pageSizeOptions: ['10', '20', '50', '100'],
+  responsive: true,
 });
 const search = ref('');
 const mastery = ref<Mastery | undefined>();
@@ -507,19 +508,19 @@ async function removeQuestion(record: Question) {
 <template>
   <div class="questions-page">
     <div class="toolbar">
-      <h2 style="margin: 0">{{ categoryName }}</h2>
-      <a-space>
+      <h2 class="toolbar-title">{{ categoryName }}</h2>
+      <div class="toolbar-filters">
         <a-input-search
           v-model:value="search"
+          class="toolbar-search"
           placeholder="搜索题目"
-          style="width: 240px"
           @search="onSearch"
         />
         <a-select
           v-model:value="mastery"
           allow-clear
           placeholder="掌握度"
-          style="width: 120px"
+          class="toolbar-select toolbar-select--mastery"
         >
           <a-select-option value="new">{{ MASTERY_LABELS.new }}</a-select-option>
           <a-select-option value="reviewing">{{ MASTERY_LABELS.reviewing }}</a-select-option>
@@ -530,13 +531,13 @@ async function removeQuestion(record: Question) {
           allow-clear
           show-search
           placeholder="公司"
-          style="width: 140px"
+          class="toolbar-select toolbar-select--company"
           :options="filterCompanyOptions"
         />
         <a-button @click="openTagModal">管理标签</a-button>
         <a-button @click="openCompanyModal">管理公司</a-button>
         <a-button type="primary" @click="openCreateModal">新建题目</a-button>
-      </a-space>
+      </div>
     </div>
 
     <div
@@ -808,6 +809,7 @@ async function removeQuestion(record: Question) {
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  min-width: 0;
   padding: 24px 24px 0 24px;
   overflow: hidden;
 }
@@ -815,15 +817,82 @@ async function removeQuestion(record: Question) {
 .toolbar {
   display: flex;
   flex-shrink: 0;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   margin-bottom: 16px;
+  min-width: 0;
+}
+
+.toolbar-title {
+  margin: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 20px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toolbar-filters {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.toolbar-search {
+  width: 240px;
+  max-width: 100%;
+}
+
+.toolbar-select--mastery {
+  width: 120px;
+}
+
+.toolbar-select--company {
+  width: 140px;
 }
 
 .table-panel {
   flex: 1 1 0;
   min-height: 0;
+  min-width: 0;
   overflow: hidden;
+}
+
+@media (max-width: 991px) {
+  .questions-page {
+    padding: 16px 16px 0 16px;
+  }
+
+  .toolbar-title {
+    width: 100%;
+  }
+
+  .toolbar-filters {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .toolbar-search {
+    flex: 1 1 180px;
+    width: auto;
+    min-width: 140px;
+  }
+
+  .toolbar-select--mastery,
+  .toolbar-select--company {
+    flex: 1 1 120px;
+    width: auto;
+    min-width: 110px;
+  }
 }
 
 /* scroll.y 默认只是 max-height，行少时表体收缩；强制 height 才能铺满 */

@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter, RouterView } from 'vue-router';
-import { message } from 'ant-design-vue';
-import { DownOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons-vue';
+import { Grid, message } from 'ant-design-vue';
+import { MenuOutlined } from '@ant-design/icons-vue';
 import axios from 'axios';
 import { useAuthStore } from '../../auth/authStore';
 import { useCategories } from '../../composables/useCategories';
 import type { Category } from '../../types';
+import AppSiderPanel from './AppSiderPanel.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -17,8 +18,16 @@ const categoryModalOpen = ref(false);
 const editingCategoryId = ref<string | null>(null);
 const categoryForm = ref({ name: '', slug: '' });
 const categorySaving = ref(false);
+const mobileNavOpen = ref(false);
 
 const isEditingCategory = computed(() => Boolean(editingCategoryId.value));
+
+/** < lg(992px)：侧栏改为抽屉，避免挤占主内容 */
+const screens = Grid.useBreakpoint();
+const isNarrow = computed(() => {
+  if (screens.value.lg === undefined) return false;
+  return !screens.value.lg;
+});
 
 onMounted(async () => {
   await loadCategories();
@@ -31,19 +40,20 @@ onMounted(async () => {
   }
 });
 
+watch(
+  () => route.fullPath,
+  () => {
+    mobileNavOpen.value = false;
+  },
+);
+
+watch(isNarrow, (narrow) => {
+  if (!narrow) mobileNavOpen.value = false;
+});
+
 async function onLogout() {
   await auth.logout();
   router.push('/login');
-}
-
-function onUserMenuClick(info: { key: string | number }) {
-  if (info.key === 'logout') {
-    void onLogout();
-  }
-}
-
-function popupContainer() {
-  return document.body;
 }
 
 const mainSelectedKeys = computed(() => {
@@ -151,121 +161,68 @@ async function removeCategory(cat: Category) {
 <template>
   <div class="app-layout">
     <a-layout class="app-shell">
-      <a-layout-sider width="220" theme="light" class="app-sider">
-        <div class="logo">
-          <img src="/favicon.svg" alt="" class="logo-icon" />
-          <span class="logo-text">面试驾驶舱</span>
-        </div>
-        <div class="sider-scroll">
-          <a-menu
-            mode="inline"
-            :selected-keys="[...mainSelectedKeys, ...categorySelectedKeys]"
-            v-model:open-keys="siderOpenKeys"
-            style="border: none"
-          >
-            <a-menu-item key="dashboard">
-              <router-link to="/">概览</router-link>
-            </a-menu-item>
-            <a-menu-item key="questions">
-              <router-link to="/questions">题库</router-link>
-            </a-menu-item>
-            <a-menu-item key="calendar">
-              <router-link to="/calendar">日历</router-link>
-            </a-menu-item>
-            <a-menu-item key="laser">
-              <router-link to="/laser">激光画板</router-link>
-            </a-menu-item>
-            <a-menu-item key="chat">
-              <router-link to="/chat">RAG 聊天</router-link>
-            </a-menu-item>
-            <a-sub-menu key="knowledge" title="知识库管理">
-              <a-menu-item key="knowledge-documents">
-                <router-link to="/knowledge/documents">文档知识库</router-link>
-              </a-menu-item>
-              <a-menu-item key="knowledge-questions">
-                <router-link to="/knowledge/questions">题目索引对照</router-link>
-              </a-menu-item>
-              <a-menu-item key="knowledge-milvus">
-                <router-link to="/knowledge/milvus">向量库浏览器</router-link>
-              </a-menu-item>
-            </a-sub-menu>
-
-            <a-menu-divider />
-
-            <a-menu-item-group>
-              <template #title>
-                <span class="category-group-title">
-                  分类
-                  <a-button type="link" size="small" class="add-category-btn" @click.stop="openCategoryModal">
-                    + 添加
-                  </a-button>
-                </span>
-              </template>
-              <a-menu-item
-                v-for="cat in categories"
-                :key="`cat-${cat.slug}`"
-                @click="goCategory(cat.slug)"
-              >
-                <span class="category-item">
-                  <span class="category-name">{{ cat.name }}</span>
-                  <span class="category-actions" @click.stop>
-                    <span
-                      class="category-edit"
-                      title="编辑分类"
-                      @click="openEditCategoryModal(cat, $event)"
-                    >
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path
-                          d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92 2.83H5v-.92l9.06-9.06.92.92L5.92 20.08zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
-                        />
-                      </svg>
-                    </span>
-                    <a-popconfirm
-                      title="确定删除该分类？"
-                      ok-text="删除"
-                      cancel-text="取消"
-                      @confirm="removeCategory(cat)"
-                    >
-                      <span class="category-delete">×</span>
-                    </a-popconfirm>
-                  </span>
-                </span>
-              </a-menu-item>
-            </a-menu-item-group>
-          </a-menu>
-        </div>
-        <div class="sider-footer">
-          <a-dropdown
-            v-if="auth.user"
-            :trigger="['click']"
-            placement="topLeft"
-            :get-popup-container="popupContainer"
-          >
-            <button type="button" class="sider-user" aria-label="用户菜单">
-              <a-avatar :size="32" class="sider-avatar">
-                <template #icon><UserOutlined /></template>
-              </a-avatar>
-              <span class="sider-username">{{ auth.user.username }}</span>
-              <DownOutlined class="sider-user-caret" />
-            </button>
-            <template #overlay>
-              <a-menu @click="onUserMenuClick">
-                <a-menu-item key="logout">
-                  <LogoutOutlined />
-                  退出登录
-                </a-menu-item>
-              </a-menu>
-            </template>
-          </a-dropdown>
-        </div>
+      <a-layout-sider
+        v-if="!isNarrow"
+        width="220"
+        theme="light"
+        class="app-sider"
+      >
+        <AppSiderPanel
+          :categories="categories"
+          :main-selected-keys="mainSelectedKeys"
+          :category-selected-keys="categorySelectedKeys"
+          v-model:open-keys="siderOpenKeys"
+          :username="auth.user?.username"
+          @go-category="goCategory"
+          @add-category="openCategoryModal"
+          @edit-category="openEditCategoryModal"
+          @remove-category="removeCategory"
+          @logout="onLogout"
+        />
       </a-layout-sider>
 
       <a-layout class="app-main">
+        <header v-if="isNarrow" class="mobile-topbar">
+          <button
+            type="button"
+            class="mobile-menu-btn"
+            aria-label="打开导航菜单"
+            @click="mobileNavOpen = true"
+          >
+            <MenuOutlined />
+          </button>
+          <div class="mobile-brand">
+            <img src="/favicon.svg" alt="" class="mobile-brand-icon" />
+            <span class="mobile-brand-text">面试驾驶舱</span>
+          </div>
+        </header>
         <a-layout-content class="content" :class="{ 'content--fixed': isFixedContentRoute }">
           <RouterView />
         </a-layout-content>
       </a-layout>
     </a-layout>
+
+    <a-drawer
+      v-if="isNarrow"
+      v-model:open="mobileNavOpen"
+      placement="left"
+      :width="280"
+      :closable="false"
+      :body-style="{ padding: 0, height: '100%' }"
+    >
+      <AppSiderPanel
+        :categories="categories"
+        :main-selected-keys="mainSelectedKeys"
+        :category-selected-keys="categorySelectedKeys"
+        v-model:open-keys="siderOpenKeys"
+        :username="auth.user?.username"
+        @go-category="goCategory"
+        @add-category="openCategoryModal"
+        @edit-category="openEditCategoryModal"
+        @remove-category="removeCategory"
+        @logout="onLogout"
+      />
+    </a-drawer>
 
     <a-modal
       v-model:open="categoryModalOpen"
@@ -314,86 +271,7 @@ async function removeCategory(cat: Category) {
 .app-sider :deep(.ant-layout-sider-children) {
   height: 100%;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
-}
-
-.logo {
-  height: 64px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 20px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.logo-icon {
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-}
-
-.logo-text {
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: #262626;
-}
-
-.sider-scroll {
-  flex: 1 1 0;
-  min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-
-.sider-footer {
-  flex-shrink: 0;
-  margin-top: auto;
-  padding: 12px 16px;
-  border-top: 1px solid #f0f0f0;
-}
-
-.sider-user {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  margin: 0;
-  padding: 6px 8px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  cursor: pointer;
-  min-width: 0;
-  text-align: left;
-}
-
-.sider-user:hover {
-  background: #f5f5f5;
-}
-
-.sider-avatar {
-  flex-shrink: 0;
-  background: #1677ff;
-}
-
-.sider-username {
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
-  color: #595959;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sider-user-caret {
-  flex-shrink: 0;
-  font-size: 10px;
-  color: #8c8c8c;
 }
 
 .app-main {
@@ -401,11 +279,68 @@ async function removeCategory(cat: Category) {
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-topbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 52px;
+  padding: 0 12px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.mobile-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #262626;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.mobile-menu-btn:hover {
+  background: #f5f5f5;
+}
+
+.mobile-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mobile-brand-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.mobile-brand-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: #262626;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .content {
-  height: 100%;
+  flex: 1 1 0;
+  height: auto;
   min-height: 0;
+  min-width: 0;
   padding: 24px;
   overflow-x: hidden;
   overflow-y: auto;
@@ -423,82 +358,12 @@ async function removeCategory(cat: Category) {
 .content--fixed :deep(> *) {
   flex: 1 1 0;
   min-height: 0;
+  min-width: 0;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.category-group-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.add-category-btn {
-  padding: 0;
-  height: auto;
-  font-size: 12px;
-}
-
-.category-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.category-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.category-actions {
-  display: none;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.category-edit,
-.category-delete {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  color: #999;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.category-edit svg {
-  width: 13px;
-  height: 13px;
-  fill: currentColor;
-}
-
-.category-edit:hover {
-  color: #1677ff;
-  background: #e6f4ff;
-}
-
-.category-delete {
-  font-size: 16px;
-  line-height: 1;
-}
-
-.category-delete:hover {
-  color: #ff4d4f;
-  background: #fff1f0;
-}
-
-:deep(.ant-menu-item:hover) .category-actions {
-  display: inline-flex;
+@media (max-width: 991px) {
+  .content:not(.content--fixed) {
+    padding: 16px;
+  }
 }
 </style>
