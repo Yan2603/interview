@@ -2,8 +2,8 @@
 # 用法（不会用于生产纯 docker compose up）：
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d mongo postgres etcd minio milvus
 #
-# 生产部署请只使用：
-#   docker compose up -d --build
+# 生产部署请只使用（CI 已推镜像，服务器 pull）：
+#   docker compose pull && docker compose up -d
 # （不要带本文件，以免把数据库端口暴露到公网）
 
 services:
