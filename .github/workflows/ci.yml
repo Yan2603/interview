@@ -74,10 +74,6 @@ jobs:
           context: .
           file: ${{ matrix.file }}
           push: ${{ github.event_name != 'pull_request' }}
-          # Actions 在海外，DaoCloud 易 TLS 超时；本地/国内仍默认 daocloud
-          build-args: |
-            NODE_IMAGE=node:20-slim
-            NGINX_IMAGE=nginx:alpine
           tags: |
             ghcr.io/${{ steps.image.outputs.name }}/${{ matrix.name }}:latest
             ghcr.io/${{ steps.image.outputs.name }}/${{ matrix.name }}:${{ github.sha }}
