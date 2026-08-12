@@ -1,5 +1,6 @@
 services:
   nginx:
+    image: ghcr.io/${GHCR_IMAGE}/nginx:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
@@ -14,6 +15,7 @@ services:
       - edge-net
 
   app:
+    image: ghcr.io/${GHCR_IMAGE}/app:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile.app

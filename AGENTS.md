@@ -50,7 +50,7 @@ pnpm --filter @interview/server create-user -- --username <name> --password <pas
 
 **开发环境：** 需要本地 MongoDB 运行。前端通过 Vite 配置将 `/api` 请求代理到后端。
 
-**生产环境（Docker）：** 使用 `docker network create edge-net` 后 `docker compose up -d --build`，再 `docker compose -f deploy/edge/docker-compose.yml up -d`。`edge-nginx` 独占宿主 `:80`；interview nginx 仅 `expose` 并反代 `/api` 到后端。MongoDB 作为 compose 服务运行，服务名为 `mongo`。
+**生产环境（Docker）：** CI 将 `nginx`/`app` 推到 GHCR；服务器 `docker network create edge-net` 后 `docker compose pull && docker compose up -d`（不在机上 build），再 `docker compose -f deploy/edge/docker-compose.yml up -d`。自动部署时 `GHCR_IMAGE`/`IMAGE_TAG` 由 Actions SSH 注入，不必写进服务器 `.env`。`edge-nginx` 独占宿主 `:80`；interview nginx 仅 `expose` 并反代 `/api` 到后端。MongoDB 作为 compose 服务运行，服务名为 `mongo`。
 
 ## 架构
 
