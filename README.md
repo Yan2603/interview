@@ -59,9 +59,9 @@ Docker 内服务互连使用 compose 服务名（`mongo` / `postgres` / `milvus`
 
 ### 自动部署（GitHub Actions）
 
-push 到 `main` / `master`（或在 Actions 里手动 Run workflow）时会：lint/build → 构建并推送 `nginx`/`app` 镜像到 GHCR → SCP 同步 compose/edge 配置 → SSH 执行 `docker compose pull` + `up -d`（**不在服务器 build / 不 git fetch**，避免 ECS 访问 github.com 超时）+ `deploy/edge` up + `docker image prune -f`。
+push 到 `main` / `master`（或在 Actions 里手动 Run workflow）时会：lint/build → 构建并推送 `nginx`/`app` 镜像到 GHCR → SSH 到 ECS 执行 `git pull` + `docker compose pull` + `up -d`（**不在服务器 build**）+ `deploy/edge` up + `docker image prune -f`。
 
-`GHCR_IMAGE` / `IMAGE_TAG` 由 Actions 在 SSH 会话里注入（`IMAGE_TAG`=`github.sha`），**不必**写进服务器 `.env`。仅在服务器上手动 `compose pull/up` 时才需要。
+`GHCR_IMAGE` / `IMAGE_TAG` 由 Actions 在 SSH 会话里注入（`IMAGE_TAG`=`github.sha`），**不必**写进服务器 `.env`（与 douban-movie 相同）。仅在服务器上手动 `compose pull/up` 时才需要。
 
 部署默认关闭，需先完成以下配置。
 
